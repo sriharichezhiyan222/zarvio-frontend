@@ -14,6 +14,7 @@ import { SettingsSection } from "@/components/dashboard/sections/settings";
 import { OutreachSection } from "@/components/dashboard/sections/outreach";
 import { LeadExplorerSection } from "@/components/dashboard/sections/lead-explorer";
 import { ComingSoonSection } from "@/components/dashboard/sections/coming-soon";
+import { DealRoomSection } from "@/components/dashboard/sections/deal-room";
 import { ZarvioAssistant } from "@/components/dashboard/zarvio-assistant";
 import type { Section, OutreachTab } from "@/lib/types";
 
@@ -30,6 +31,8 @@ export default function Dashboard() {
         return <CampaignSection />;
       case "deals":
         return <DealsSection />;
+      case "deal-room":
+        return <DealRoomSection />;
       case "customers":
         return <CustomersSection />;
       case "team":
