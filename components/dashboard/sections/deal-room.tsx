@@ -1,7 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import type {
+  Lead,
+  DealRoomData,
+  RASData,
+  ChatMessage,
+  SwarmAgent,
+  AgentVote,
+} from "@/lib/types";
 import {
   DollarSign,
   TrendingUp,
@@ -13,7 +21,6 @@ import {
   Shield,
   Calendar,
   Briefcase,
-  Scale,
   Award,
   CheckCircle2,
   XCircle,
@@ -24,11 +31,12 @@ import {
   Building2,
   ChevronRight,
   BarChart3,
-  Percent,
   ArrowUpRight,
   Timer,
   BadgeCheck,
   CircleDollarSign,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,109 +44,236 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 
-// Mock lead data
-const mockLead = {
+// ==========================================
+// API Integration Hooks (Ready for Backend)
+// ==========================================
+// TODO: Replace with actual API hooks when backend is ready
+// import { useDealRoom, useRAS, useChatSession, useSendChatMessage } from "@/lib/hooks/use-api";
+
+// ==========================================
+// Mock Data (Replace with API responses)
+// ==========================================
+
+const mockLead: Lead = {
+  id: "lead-001",
   name: "Rahul Sharma",
   company: "TechFlow Solutions",
   title: "Head of Sales",
   industry: "SaaS",
   companySize: "50-200",
   email: "rahul@techflow.io",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
-// AI Generated Deal Room Data
-const dealRoomData = {
+const mockDealRoomData: DealRoomData = {
+  id: "dr-001",
+  leadId: "lead-001",
   pricing: {
     recommended_offer: 25000,
     win_probability: 92,
     installments: "3x ₹8333",
     competitor_comparison: "Apollo = ₹40K, less AI",
+    currency: "INR",
   },
   roi_calculator: {
     pipeline_increase: "150K → 630K (4.2x)",
     timeframe: "90 days",
     break_even: "Month 2",
+    roi_multiplier: 4.2,
   },
   case_studies: [
-    { company: "CloudScale SaaS", closed: "₹28K", result: "3x pipeline in 60 days" },
-    { company: "DataDrive Startup", closed: "₹22K", result: "42% faster closes" },
-    { company: "GrowthHub Tech", closed: "₹30K", result: "5.2x ROI in Q1" },
+    { id: "cs-1", company: "CloudScale SaaS", closed: "₹28K", result: "3x pipeline in 60 days", industry: "SaaS" },
+    { id: "cs-2", company: "DataDrive Startup", closed: "₹22K", result: "42% faster closes", industry: "Tech" },
+    { id: "cs-3", company: "GrowthHub Tech", closed: "₹30K", result: "5.2x ROI in Q1", industry: "SaaS" },
   ],
-  objection_responses: {
-    too_expensive: "₹20K = $30K SDR team. Competitors pay 2x more.",
-    need_time: "24hr onboarding, ROI in 30 days.",
-    competitors: "Apollo finds leads. We close them.",
-    integration: "HubSpot/Pipedrive in 5 mins. Onboard tomorrow.",
-  },
+  objection_responses: [
+    { key: "too_expensive", label: "Too Expensive", response: "₹20K = $30K SDR team. Competitors pay 2x more." },
+    { key: "need_time", label: "Need Time", response: "24hr onboarding, ROI in 30 days." },
+    { key: "competitors", label: "Competitors", response: "Apollo finds leads. We close them." },
+    { key: "integration", label: "Integration", response: "HubSpot/Pipedrive in 5 mins. Onboard tomorrow." },
+  ],
   urgency_close: {
     limited_spots: "Only 3 Pro slots left this month",
     social_proof: "Acme closed yesterday at ₹25K",
   },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
-// Swarm Agents
-const swarmAgents = [
-  { id: "pricing", name: "Pricing Agent", icon: DollarSign, vote: "approve", reason: "Price point optimal for company size" },
-  { id: "risk", name: "Risk Agent", icon: AlertTriangle, vote: "approve", reason: "Low churn probability (8%)" },
-  { id: "upsell", name: "Upsell Agent", icon: TrendingUp, vote: "approve", reason: "Enterprise upgrade likely in Q3" },
-  { id: "timing", name: "Timing Agent", icon: Clock, vote: "approve", reason: "Budget cycle ends next week" },
-  { id: "competition", name: "Competition Agent", icon: Target, vote: "hold", reason: "Competitor demo scheduled" },
-  { id: "capacity", name: "Capacity Agent", icon: Zap, vote: "approve", reason: "Onboarding slots available" },
-  { id: "momentum", name: "Momentum Agent", icon: ArrowUpRight, vote: "approve", reason: "4 touchpoints this week" },
-  { id: "budget", name: "Budget Agent", icon: Briefcase, vote: "approve", reason: "Company raised Series A" },
-  { id: "authority", name: "Authority Agent", icon: Shield, vote: "approve", reason: "Decision maker engaged" },
-  { id: "fit", name: "Fit Agent", icon: Award, vote: "approve", reason: "95% ICP match score" },
+const mockSwarmAgents: SwarmAgent[] = [
+  { id: "pricing", name: "Pricing Agent", shortName: "P", iconType: "pricing", vote: "approve", confidence: 94, reason: "Price point optimal for company size" },
+  { id: "risk", name: "Risk Agent", shortName: "R", iconType: "risk", vote: "approve", confidence: 88, reason: "Low churn probability (8%)" },
+  { id: "upsell", name: "Upsell Agent", shortName: "U", iconType: "upsell", vote: "approve", confidence: 91, reason: "Enterprise upgrade likely in Q3" },
+  { id: "timing", name: "Timing Agent", shortName: "T", iconType: "timing", vote: "approve", confidence: 85, reason: "Budget cycle ends next week" },
+  { id: "competition", name: "Competition Agent", shortName: "C", iconType: "competition", vote: "hold", confidence: 67, reason: "Competitor demo scheduled" },
+  { id: "capacity", name: "Capacity Agent", shortName: "Ca", iconType: "capacity", vote: "approve", confidence: 92, reason: "Onboarding slots available" },
+  { id: "momentum", name: "Momentum Agent", shortName: "M", iconType: "momentum", vote: "approve", confidence: 95, reason: "4 touchpoints this week" },
+  { id: "budget", name: "Budget Agent", shortName: "B", iconType: "budget", vote: "approve", confidence: 89, reason: "Company raised Series A" },
+  { id: "authority", name: "Authority Agent", shortName: "A", iconType: "authority", vote: "approve", confidence: 93, reason: "Decision maker engaged" },
+  { id: "fit", name: "Fit Agent", shortName: "F", iconType: "fit", vote: "approve", confidence: 95, reason: "95% ICP match score" },
 ];
 
-// Chat messages
-const initialMessages = [
+const mockRASData: RASData = {
+  id: "ras-001",
+  leadId: "lead-001",
+  dealId: "deal-001",
+  approveCount: 9,
+  holdCount: 1,
+  rejectCount: 0,
+  agents: mockSwarmAgents,
+  recommendedAction: "SEND $25K PROPOSAL",
+  decision: "close_now",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const initialMessages: ChatMessage[] = [
   {
+    id: "msg-001",
     role: "lead",
     message: "Hi, I saw your demo. The AI looks impressive but honestly the pricing seems a bit steep for us.",
     time: "2 min ago",
+    timestamp: new Date().toISOString(),
   },
 ];
 
-const voteColors = {
+// ==========================================
+// Agent Icon Mapping
+// ==========================================
+
+const agentIcons: Record<SwarmAgent["iconType"], typeof DollarSign> = {
+  pricing: DollarSign,
+  risk: AlertTriangle,
+  upsell: TrendingUp,
+  timing: Clock,
+  competition: Target,
+  capacity: Zap,
+  momentum: ArrowUpRight,
+  budget: Briefcase,
+  authority: Shield,
+  fit: Award,
+};
+
+const voteColors: Record<AgentVote, string> = {
   approve: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
   hold: "text-amber-400 bg-amber-500/10 border-amber-500/30",
   reject: "text-red-400 bg-red-500/10 border-red-500/30",
 };
 
-const voteIcons = {
+const voteIcons: Record<AgentVote, typeof CheckCircle2> = {
   approve: CheckCircle2,
   hold: Pause,
   reject: XCircle,
 };
 
-export function DealRoomSection() {
+// ==========================================
+// Component Props Interface
+// ==========================================
+
+interface DealRoomSectionProps {
+  leadId?: string;
+  // TODO: These will come from API when backend is connected
+  // lead?: Lead;
+  // dealRoomData?: DealRoomData;
+  // rasData?: RASData;
+}
+
+export function DealRoomSection({ leadId }: DealRoomSectionProps) {
+  // ==========================================
+  // State Management
+  // ==========================================
   const [activeTab, setActiveTab] = useState<"deal-room" | "chat" | "swarm">("deal-room");
   const [chatInput, setChatInput] = useState("");
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSendingPayment, setIsSendingPayment] = useState(false);
 
-  const approveCount = swarmAgents.filter((a) => a.vote === "approve").length;
+  // ==========================================
+  // API Data (Replace mocks with hooks when ready)
+  // ==========================================
+  // TODO: Uncomment when backend is ready
+  // const { data: lead, isLoading: leadLoading } = useLead(leadId);
+  // const { data: dealRoom, isLoading: dealRoomLoading } = useDealRoom(leadId);
+  // const { data: ras, isLoading: rasLoading } = useRAS(leadId);
+  // const { data: chatSession } = useChatSession(leadId);
+  // const { trigger: sendMessage } = useSendChatMessage();
 
-  const handleSendMessage = () => {
+  const lead = mockLead;
+  const dealRoom = mockDealRoomData;
+  const ras = mockRASData;
+  const approveCount = ras.approveCount;
+
+  // ==========================================
+  // Event Handlers (Ready for API Integration)
+  // ==========================================
+
+  const handleSendMessage = useCallback(async () => {
     if (!chatInput.trim()) return;
-    
-    setMessages([...messages, { role: "user", message: chatInput, time: "Just now" }]);
+
+    const newMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      role: "user",
+      message: chatInput,
+      time: "Just now",
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
     setChatInput("");
     setIsTyping(true);
 
-    // Simulate AI response
+    // TODO: Replace with API call
+    // await sendMessage({ sessionId: chatSession?.id, message: chatInput });
+    
+    // Simulate AI response (remove when API is connected)
     setTimeout(() => {
       setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          message: `₹20K = $30K SDR team. ${mockLead.company} can see 4.2x pipeline growth in 90 days. Acme closed at the same price yesterday. Want me to send the payment link?`,
-          time: "Just now",
-        },
-      ]);
+      const aiResponse: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "ai",
+        message: `₹20K = $30K SDR team. ${lead.company} can see 4.2x pipeline growth in 90 days. Acme closed at the same price yesterday. Want me to send the payment link?`,
+        time: "Just now",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, aiResponse]);
     }, 1500);
-  };
+  }, [chatInput, lead.company]);
+
+  const handleSendPaymentLink = useCallback(async () => {
+    setIsSendingPayment(true);
+    
+    // TODO: Replace with API call
+    // await dealRoomApi.sendPaymentLink(leadId, dealRoom.pricing.recommended_offer);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsSendingPayment(false);
+      // Show success toast or notification
+      console.log("[v0] Payment link sent successfully");
+    }, 1500);
+  }, []);
+
+  const handleRefreshData = useCallback(async () => {
+    setIsLoading(true);
+    
+    // TODO: Replace with SWR mutate to refetch data
+    // await mutate(`/deal-room/lead/${leadId}`);
+    // await mutate(`/ras/lead/${leadId}`);
+    
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  const handleQuickResponse = useCallback((response: string) => {
+    setChatInput(response);
+  }, []);
+
+  // ==========================================
+  // Render
+  // ==========================================
 
   return (
     <div className="space-y-6">
@@ -149,24 +284,33 @@ export function DealRoomSection() {
             <Building2 className="w-7 h-7 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">{mockLead.name}</h2>
+            <h2 className="text-xl font-bold text-foreground">{lead.name}</h2>
             <p className="text-sm text-muted-foreground">
-              {mockLead.title} at {mockLead.company}
+              {lead.title} at {lead.company}
             </p>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline" className="text-xs border-border">
-                {mockLead.industry}
+                {lead.industry}
               </Badge>
               <Badge variant="outline" className="text-xs border-border">
-                {mockLead.companySize} employees
+                {lead.companySize} employees
               </Badge>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefreshData}
+            disabled={isLoading}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+          </Button>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Deal Health</p>
-            <p className="text-2xl font-bold text-emerald-400">{dealRoomData.pricing.win_probability}%</p>
+            <p className="text-2xl font-bold text-emerald-400">{dealRoom.pricing.win_probability}%</p>
           </div>
           <div className="w-12 h-12 rounded-full border-4 border-emerald-500/30 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-emerald-400" />
@@ -212,22 +356,25 @@ export function DealRoomSection() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Recommended Offer</p>
-                    <p className="text-2xl font-bold text-foreground">₹{dealRoomData.pricing.recommended_offer.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {dealRoom.pricing.currency === "INR" ? "₹" : "$"}
+                      {dealRoom.pricing.recommended_offer.toLocaleString()}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">/month</p>
                   </div>
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Win Probability</p>
-                    <p className="text-2xl font-bold text-emerald-400">{dealRoomData.pricing.win_probability}%</p>
-                    <Progress value={dealRoomData.pricing.win_probability} className="mt-2 h-1.5" />
+                    <p className="text-2xl font-bold text-emerald-400">{dealRoom.pricing.win_probability}%</p>
+                    <Progress value={dealRoom.pricing.win_probability} className="mt-2 h-1.5" />
                   </div>
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Installments</p>
-                    <p className="text-xl font-bold text-foreground">{dealRoomData.pricing.installments}</p>
+                    <p className="text-xl font-bold text-foreground">{dealRoom.pricing.installments}</p>
                     <p className="text-xs text-emerald-400 mt-1">Available</p>
                   </div>
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">vs Competitors</p>
-                    <p className="text-sm font-medium text-foreground">{dealRoomData.pricing.competitor_comparison}</p>
+                    <p className="text-sm font-medium text-foreground">{dealRoom.pricing.competitor_comparison}</p>
                     <p className="text-xs text-emerald-400 mt-1">50% better value</p>
                   </div>
                 </div>
@@ -249,21 +396,21 @@ export function DealRoomSection() {
                       <TrendingUp className="w-5 h-5 text-emerald-400" />
                       <p className="text-sm font-medium text-emerald-400">Pipeline Increase</p>
                     </div>
-                    <p className="text-xl font-bold text-foreground">{dealRoomData.roi_calculator.pipeline_increase}</p>
+                    <p className="text-xl font-bold text-foreground">{dealRoom.roi_calculator.pipeline_increase}</p>
                   </div>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Timer className="w-5 h-5 text-primary" />
                       <p className="text-sm font-medium text-primary">Timeframe</p>
                     </div>
-                    <p className="text-xl font-bold text-foreground">{dealRoomData.roi_calculator.timeframe}</p>
+                    <p className="text-xl font-bold text-foreground">{dealRoom.roi_calculator.timeframe}</p>
                   </div>
                   <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <BadgeCheck className="w-5 h-5 text-amber-400" />
                       <p className="text-sm font-medium text-amber-400">Break Even</p>
                     </div>
-                    <p className="text-xl font-bold text-foreground">{dealRoomData.roi_calculator.break_even}</p>
+                    <p className="text-xl font-bold text-foreground">{dealRoom.roi_calculator.break_even}</p>
                   </div>
                 </div>
               </CardContent>
@@ -279,9 +426,9 @@ export function DealRoomSection() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {dealRoomData.case_studies.map((study, index) => (
+                  {dealRoom.case_studies.map((study) => (
                     <div
-                      key={index}
+                      key={study.id}
                       className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -314,12 +461,12 @@ export function DealRoomSection() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {Object.entries(dealRoomData.objection_responses).map(([key, response]) => (
-                  <div key={key} className="p-3 rounded-lg bg-secondary/50 border border-border">
+                {dealRoom.objection_responses.map((objection) => (
+                  <div key={objection.key} className="p-3 rounded-lg bg-secondary/50 border border-border">
                     <p className="text-xs font-medium text-amber-400 mb-1 capitalize">
-                      {key.replace(/_/g, " ")}
+                      {objection.label}
                     </p>
-                    <p className="text-sm text-foreground">{response}</p>
+                    <p className="text-sm text-foreground">{objection.response}</p>
                   </div>
                 ))}
               </CardContent>
@@ -339,18 +486,26 @@ export function DealRoomSection() {
                     <Timer className="w-4 h-4 text-amber-400" />
                     <p className="text-sm font-medium text-amber-400">Limited Spots</p>
                   </div>
-                  <p className="text-sm text-foreground">{dealRoomData.urgency_close.limited_spots}</p>
+                  <p className="text-sm text-foreground">{dealRoom.urgency_close.limited_spots}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-card/50 border border-emerald-500/30">
                   <div className="flex items-center gap-2 mb-1">
                     <BadgeCheck className="w-4 h-4 text-emerald-400" />
                     <p className="text-sm font-medium text-emerald-400">Social Proof</p>
                   </div>
-                  <p className="text-sm text-foreground">{dealRoomData.urgency_close.social_proof}</p>
+                  <p className="text-sm text-foreground">{dealRoom.urgency_close.social_proof}</p>
                 </div>
-                <Button className="w-full bg-gradient-to-r from-primary to-chart-2 text-primary-foreground">
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Payment Link
+                <Button
+                  className="w-full bg-gradient-to-r from-primary to-chart-2 text-primary-foreground"
+                  onClick={handleSendPaymentLink}
+                  disabled={isSendingPayment}
+                >
+                  {isSendingPayment ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  {isSendingPayment ? "Sending..." : "Send Payment Link"}
                 </Button>
               </CardContent>
             </Card>
@@ -377,9 +532,9 @@ export function DealRoomSection() {
               <CardContent className="flex-1 flex flex-col p-0">
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.map((msg, index) => (
+                  {messages.map((msg) => (
                     <div
-                      key={index}
+                      key={msg.id}
                       className={cn(
                         "flex gap-3",
                         msg.role === "user" ? "flex-row-reverse" : ""
@@ -396,7 +551,7 @@ export function DealRoomSection() {
                               : "bg-emerald-500/20 text-emerald-400"
                           )}
                         >
-                          {msg.role === "lead" ? mockLead.name[0] : msg.role === "ai" ? "AI" : "You"}
+                          {msg.role === "lead" ? lead.name[0] : msg.role === "ai" ? "AI" : "You"}
                         </AvatarFallback>
                       </Avatar>
                       <div
@@ -448,8 +603,8 @@ export function DealRoomSection() {
                       placeholder="Type your response..."
                       className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                    <Button onClick={handleSendMessage} className="bg-primary text-primary-foreground">
-                      <Send className="w-4 h-4" />
+                    <Button onClick={handleSendMessage} className="bg-primary text-primary-foreground" disabled={isTyping}>
+                      {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
@@ -464,16 +619,16 @@ export function DealRoomSection() {
                 <CardTitle className="text-lg font-semibold">Quick Responses</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {Object.entries(dealRoomData.objection_responses).map(([key, response]) => (
+                {dealRoom.objection_responses.map((objection) => (
                   <Button
-                    key={key}
+                    key={objection.key}
                     variant="outline"
                     className="w-full justify-start text-left h-auto py-3 border-border"
-                    onClick={() => setChatInput(response)}
+                    onClick={() => handleQuickResponse(objection.response)}
                   >
                     <div className="flex items-center gap-2">
                       <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-xs line-clamp-2">{response}</span>
+                      <span className="text-xs line-clamp-2">{objection.response}</span>
                     </div>
                   </Button>
                 ))}
@@ -490,11 +645,14 @@ export function DealRoomSection() {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Deal Size</span>
-                  <span className="font-medium text-foreground">₹{dealRoomData.pricing.recommended_offer.toLocaleString()}</span>
+                  <span className="font-medium text-foreground">
+                    {dealRoom.pricing.currency === "INR" ? "₹" : "$"}
+                    {dealRoom.pricing.recommended_offer.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Health</span>
-                  <span className="font-medium text-emerald-400">{dealRoomData.pricing.win_probability}%</span>
+                  <span className="font-medium text-emerald-400">{dealRoom.pricing.win_probability}%</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Swarm Vote</span>
@@ -519,25 +677,25 @@ export function DealRoomSection() {
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                      {approveCount} Approve
+                      {ras.approveCount} Approve
                     </Badge>
                     <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20">
-                      {swarmAgents.filter((a) => a.vote === "hold").length} Hold
+                      {ras.holdCount} Hold
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {swarmAgents.map((agent) => {
-                    const Icon = agent.icon;
-                    const VoteIcon = voteIcons[agent.vote as keyof typeof voteIcons];
+                  {ras.agents.map((agent) => {
+                    const Icon = agentIcons[agent.iconType];
+                    const VoteIcon = voteIcons[agent.vote];
                     return (
                       <div
                         key={agent.id}
                         className={cn(
                           "p-4 rounded-lg border transition-all",
-                          voteColors[agent.vote as keyof typeof voteColors]
+                          voteColors[agent.vote]
                         )}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -547,7 +705,10 @@ export function DealRoomSection() {
                             </div>
                             <span className="font-medium text-sm">{agent.name}</span>
                           </div>
-                          <VoteIcon className="w-5 h-5" />
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-semibold">{agent.confidence}%</span>
+                            <VoteIcon className="w-5 h-5" />
+                          </div>
                         </div>
                         <p className="text-xs text-foreground/80">{agent.reason}</p>
                       </div>
@@ -570,9 +731,11 @@ export function DealRoomSection() {
               <CardContent className="space-y-4">
                 <div className="text-center py-4">
                   <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 border-4 border-emerald-500/40 flex items-center justify-center mb-3">
-                    <span className="text-3xl font-bold text-emerald-400">{approveCount}/10</span>
+                    <span className="text-3xl font-bold text-emerald-400">{ras.approveCount}/10</span>
                   </div>
-                  <p className="text-lg font-bold text-emerald-400">CLOSE NOW</p>
+                  <p className="text-lg font-bold text-emerald-400">
+                    {ras.decision === "close_now" ? "CLOSE NOW" : ras.decision.toUpperCase().replace("_", " ")}
+                  </p>
                   <p className="text-sm text-muted-foreground mt-1">High confidence deal</p>
                 </div>
 
@@ -580,21 +743,29 @@ export function DealRoomSection() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Approve</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(approveCount / 10) * 100} className="w-24 h-2" />
-                      <span className="font-medium text-emerald-400">{approveCount}</span>
+                      <Progress value={(ras.approveCount / 10) * 100} className="w-24 h-2" />
+                      <span className="font-medium text-emerald-400">{ras.approveCount}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Hold</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(swarmAgents.filter((a) => a.vote === "hold").length / 10) * 100} className="w-24 h-2 [&>div]:bg-amber-400" />
-                      <span className="font-medium text-amber-400">{swarmAgents.filter((a) => a.vote === "hold").length}</span>
+                      <Progress value={(ras.holdCount / 10) * 100} className="w-24 h-2 [&>div]:bg-amber-400" />
+                      <span className="font-medium text-amber-400">{ras.holdCount}</span>
                     </div>
                   </div>
                 </div>
 
-                <Button className="w-full bg-gradient-to-r from-emerald-500 to-primary text-primary-foreground">
-                  <Send className="w-4 h-4 mr-2" />
+                <Button 
+                  className="w-full bg-gradient-to-r from-emerald-500 to-primary text-primary-foreground"
+                  onClick={handleSendPaymentLink}
+                  disabled={isSendingPayment}
+                >
+                  {isSendingPayment ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
                   Execute Close Sequence
                 </Button>
               </CardContent>
@@ -606,7 +777,9 @@ export function DealRoomSection() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <p className="text-sm text-foreground">Send payment link with ₹25K offer and 3x installment option. Mention limited Pro slots.</p>
+                  <p className="text-sm text-foreground">
+                    {ras.recommendedAction}. Mention limited Pro slots.
+                  </p>
                 </div>
                 <Button variant="outline" className="w-full border-border">
                   <Calendar className="w-4 h-4 mr-2" />

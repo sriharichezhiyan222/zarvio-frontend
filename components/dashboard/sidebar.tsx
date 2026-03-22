@@ -26,6 +26,7 @@ import {
   Radar,
   Ghost,
   Store,
+  Bot,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -39,11 +40,12 @@ interface SidebarProps {
   onComingSoonTabChange?: (tab: ComingSoonTab) => void;
 }
 
-const mainNavItems: { id: Section; label: string; icon: React.ElementType }[] = [
+const mainNavItems: { id: Section; label: string; icon: React.ElementType; badge?: string }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "campaign", label: "Campaign", icon: Megaphone },
   { id: "deals", label: "Deals", icon: Handshake },
   { id: "deal-room", label: "Deal Room", icon: DoorOpen },
+  { id: "ras", label: "RAS", icon: Bot, badge: "AI" },
   { id: "lead-explorer", label: "Lead Explorer", icon: Search },
   { id: "customers", label: "Customers", icon: Building2 },
   { id: "team", label: "Team", icon: Users },
@@ -117,7 +119,8 @@ export function Sidebar({
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-foreground"
-                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
+                item.id === "ras" && "bg-gradient-to-r from-primary/10 to-chart-2/10 border border-primary/20"
               )}
             >
               <span
@@ -129,16 +132,22 @@ export function Sidebar({
               <Icon
                 className={cn(
                   "w-5 h-5 shrink-0 transition-transform duration-200",
-                  isActive ? "text-primary" : "group-hover:scale-110"
+                  isActive ? "text-primary" : "group-hover:scale-110",
+                  item.id === "ras" && "text-primary"
                 )}
               />
               <span
                 className={cn(
-                  "whitespace-nowrap transition-all duration-300",
+                  "whitespace-nowrap transition-all duration-300 flex items-center gap-2",
                   collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
                 )}
               >
                 {item.label}
+                {item.badge && !collapsed && (
+                  <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] rounded font-semibold">
+                    {item.badge}
+                  </span>
+                )}
               </span>
             </button>
           );
