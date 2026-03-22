@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDashboardForecast } from "@/lib/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,20 +94,56 @@ const scenarios = [
 
 export function ForecastingSection() {
   const [timeframe, setTimeframe] = useState("quarterly");
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  const { data: apiData, isLoading, error } = useDashboardForecast();
+  
+  if (error) {
+    return <div className="p-8 text-center text-destructive bg-destructive/10 rounded-xl border border-destructive/20 mt-6">Failed to load forecast data.</div>;
+  }
 
   const currentQuarterTarget = 1800000;
-  const currentQuarterForecast = 2100000;
+  // Use API total if available, else fallback
+  const currentQuarterForecast = apiData?.breakdown?.committed 
+    ? apiData.breakdown.committed + apiData.breakdown.best_case
+    : 2100000;
   const forecastAccuracy = 94;
   const pipelineCoverage = 3.2;
 
+  let displayForecastData = forecastData;
+  if (apiData?.monthly_actuals && apiData?.monthly_forecast) {
+    const months = ["M1", "M2", "M3", "M4", "M5", "M6"];
+    displayForecastData = [
+      { month: months[0], actual: apiData.monthly_actuals[0] || 0, forecast: apiData.monthly_actuals[0] || 0, target: 450000 },
+      { month: months[1], actual: apiData.monthly_actuals[1] || 0, forecast: apiData.monthly_actuals[1] || 0, target: 450000 },
+      { month: months[2], actual: apiData.monthly_actuals[2] || 0, forecast: apiData.monthly_actuals[2] || 0, target: 500000 },
+      { month: months[3], actual: null, forecast: apiData.monthly_forecast[0] || 0, target: 500000 },
+      { month: months[4], actual: null, forecast: apiData.monthly_forecast[1] || 0, target: 550000 },
+      { month: months[5], actual: null, forecast: apiData.monthly_forecast[2] || 0, target: 550000 },
+    ];
+  }
+
+  let displayQuarterly = quarterlyForecast;
+  if (apiData?.breakdown) {
+    displayQuarterly = [
+      {
+        quarter: "Q3 (AI Pred)",
+        committed: apiData.breakdown.committed || 0,
+        bestCase: apiData.breakdown.best_case || 0,
+        pipeline: apiData.breakdown.pipeline || 0,
+      }
+    ];
+  }
+
   return (
     <div className="space-y-6">
+      {isLoading && !apiData && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Forecast...</p>
+          </div>
+        </div>
+      )}
+      
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
@@ -235,7 +272,7 @@ export function ForecastingSection() {
         <CardContent>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={forecastData}>
+              <AreaChart data={displayForecastData}>
                 <defs>
                   <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="oklch(0.7 0.18 145)" stopOpacity={0.3} />
@@ -299,7 +336,7 @@ export function ForecastingSection() {
           <CardContent>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={quarterlyForecast} barGap={4}>
+                <BarChart data={displayQuarterly} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 260)" />
                   <XAxis dataKey="quarter" stroke="oklch(0.65 0 0)" fontSize={12} />
                   <YAxis

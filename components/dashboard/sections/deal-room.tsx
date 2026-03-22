@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type {
   Lead,
@@ -22,6 +22,7 @@ import {
   Calendar,
   Briefcase,
   Award,
+  Star,
   CheckCircle2,
   XCircle,
   Pause,
@@ -47,8 +48,7 @@ import { Progress } from "@/components/ui/progress";
 // ==========================================
 // API Integration Hooks (Ready for Backend)
 // ==========================================
-// TODO: Replace with actual API hooks when backend is ready
-// import { useDealRoom, useRAS, useChatSession, useSendChatMessage } from "@/lib/hooks/use-api";
+import { useLead, useDealRoom, useRAS, useChatSession, useSendChatMessage, useLeadScoring, useEnrichLead } from "@/lib/hooks/use-api";
 
 // ==========================================
 // Mock Data (Replace with API responses)
@@ -191,19 +191,59 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
   const [isSendingPayment, setIsSendingPayment] = useState(false);
 
   // ==========================================
-  // API Data (Replace mocks with hooks when ready)
+  // API Data
   // ==========================================
-  // TODO: Uncomment when backend is ready
-  // const { data: lead, isLoading: leadLoading } = useLead(leadId);
-  // const { data: dealRoom, isLoading: dealRoomLoading } = useDealRoom(leadId);
-  // const { data: ras, isLoading: rasLoading } = useRAS(leadId);
-  // const { data: chatSession } = useChatSession(leadId);
-  // const { trigger: sendMessage } = useSendChatMessage();
+  const defaultLeadId = leadId?.replace("lead-", "") || "1";
+  const { data: lead, isLoading: leadLoading } = useLead(defaultLeadId);
+  const { data: dealRoom, isLoading: dealRoomLoading, mutate: mutateDealRoom } = useDealRoom(defaultLeadId);
+  const { data: ras, isLoading: rasLoading, mutate: mutateRas } = useRAS(defaultLeadId);
+  const { data: chatSession } = useChatSession(defaultLeadId);
+  const { data: scoreData, isMutating: isScoring, trigger: triggerScore } = useLeadScoring();
+  const { data: enrichmentData, isMutating: isEnriching, trigger: triggerEnrich } = useEnrichLead();
 
-  const lead = mockLead;
-  const dealRoom = mockDealRoomData;
-  const ras = mockRASData;
-  const approveCount = ras.approveCount;
+  // Fetch score once lead is loaded
+  useEffect(() => {
+    if (lead && !scoreData && !isScoring) {
+      triggerScore({
+        company: lead.company,
+        title: lead.title,
+        industry: lead.industry,
+        companySize: lead.companySize,
+      });
+    }
+    
+    if (defaultLeadId && !enrichmentData && !isEnriching) {
+      triggerEnrich({ leadId: defaultLeadId });
+    }
+  }, [lead, scoreData, isScoring, triggerScore, defaultLeadId, enrichmentData, isEnriching, triggerEnrich]);
+
+  // Safe Parsing of API Response
+  const analytics = dealRoom?.analytics || {};
+  const copywriting = dealRoom?.copywriting || {};
+  const safeWinProb = analytics?.win_probability ?? mockDealRoomData.pricing.win_probability;
+  const safePrice = analytics?.recommended_price ?? mockDealRoomData.pricing.recommended_offer;
+  const safeRoiStr = analytics?.roi_prediction ?? mockDealRoomData.roi_calculator.pipeline_increase;
+  const rawCompetitorComparison = copywriting?.competitor_comparison;
+  const formattedCompetitors = Array.isArray(rawCompetitorComparison) && rawCompetitorComparison.length > 0 
+    ? rawCompetitorComparison.map((c: any) => `${c.competitor_name}: ${c.our_advantage}`).join(', ') 
+    : mockDealRoomData.pricing.competitor_comparison;
+  
+  const rawObjections = analytics?.objection_playbook || mockDealRoomData.objection_responses;
+
+  // Safe parsing for RAS
+  const rasDimensions = ras?.dimensions || {};
+  const rasApproveCount = ras?.status === "approve" ? 8 : (ras?.average_score > 50 ? 6 : 4);
+  const rasAverage = ras?.average_score || 0;
+  
+  const leadScore = scoreData?.score !== undefined ? scoreData.score : safeWinProb;
+
+  if (leadLoading || dealRoomLoading || rasLoading || !lead || !dealRoom || !ras) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // ==========================================
   // Event Handlers (Ready for API Integration)
@@ -310,7 +350,7 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
           </Button>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Deal Health</p>
-            <p className="text-2xl font-bold text-emerald-400">{dealRoom.pricing.win_probability}%</p>
+            <p className="text-2xl font-bold text-emerald-400">{isScoring ? "..." : leadScore}%</p>
           </div>
           <div className="w-12 h-12 rounded-full border-4 border-emerald-500/30 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-emerald-400" />
@@ -334,7 +374,7 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
             {tab === "deal-room" && <Target className="w-4 h-4" />}
             {tab === "chat" && <MessageSquare className="w-4 h-4" />}
             {tab === "swarm" && <Users className="w-4 h-4" />}
-            {tab === "deal-room" ? "Deal Room" : tab === "chat" ? "Sales Co-Pilot" : `Swarm (${approveCount}/10)`}
+            {tab === "deal-room" ? "Deal Room" : tab === "chat" ? "Sales Co-Pilot" : `Swarm (${rasApproveCount}/10)`}
           </button>
         ))}
       </div>
@@ -357,25 +397,25 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Recommended Offer</p>
                     <p className="text-2xl font-bold text-foreground">
-                      {dealRoom.pricing.currency === "INR" ? "₹" : "$"}
-                      {dealRoom.pricing.recommended_offer.toLocaleString()}
+                      {mockDealRoomData.pricing.currency === "INR" ? "₹" : "$"}
+                      {safePrice.toLocaleString()}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">/month</p>
                   </div>
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Win Probability</p>
-                    <p className="text-2xl font-bold text-emerald-400">{dealRoom.pricing.win_probability}%</p>
-                    <Progress value={dealRoom.pricing.win_probability} className="mt-2 h-1.5" />
+                    <p className="text-2xl font-bold text-emerald-400">{isScoring ? "..." : leadScore}%</p>
+                    <Progress value={leadScore} className="mt-2 h-1.5" />
                   </div>
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Installments</p>
-                    <p className="text-xl font-bold text-foreground">{dealRoom.pricing.installments}</p>
+                    <p className="text-xl font-bold text-foreground">{mockDealRoomData.pricing.installments}</p>
                     <p className="text-xs text-emerald-400 mt-1">Available</p>
                   </div>
                   <div className="p-4 rounded-lg bg-card/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">vs Competitors</p>
-                    <p className="text-sm font-medium text-foreground">{dealRoom.pricing.competitor_comparison}</p>
-                    <p className="text-xs text-emerald-400 mt-1">50% better value</p>
+                    <p className="text-sm font-medium text-foreground line-clamp-2">{formattedCompetitors}</p>
+                    <p className="text-xs text-emerald-400 mt-1">Based on Analysis</p>
                   </div>
                 </div>
               </CardContent>
@@ -394,23 +434,23 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                   <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <TrendingUp className="w-5 h-5 text-emerald-400" />
-                      <p className="text-sm font-medium text-emerald-400">Pipeline Increase</p>
+                      <p className="text-sm font-medium text-emerald-400">ROI Prediction</p>
                     </div>
-                    <p className="text-xl font-bold text-foreground">{dealRoom.roi_calculator.pipeline_increase}</p>
+                    <p className="text-lg font-bold text-foreground line-clamp-2">{safeRoiStr}</p>
                   </div>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Timer className="w-5 h-5 text-primary" />
                       <p className="text-sm font-medium text-primary">Timeframe</p>
                     </div>
-                    <p className="text-xl font-bold text-foreground">{dealRoom.roi_calculator.timeframe}</p>
+                    <p className="text-xl font-bold text-foreground">{mockDealRoomData.roi_calculator.timeframe}</p>
                   </div>
                   <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <BadgeCheck className="w-5 h-5 text-amber-400" />
                       <p className="text-sm font-medium text-amber-400">Break Even</p>
                     </div>
-                    <p className="text-xl font-bold text-foreground">{dealRoom.roi_calculator.break_even}</p>
+                    <p className="text-xl font-bold text-foreground">{mockDealRoomData.roi_calculator.break_even}</p>
                   </div>
                 </div>
               </CardContent>
@@ -426,7 +466,7 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {dealRoom.case_studies.map((study) => (
+                  {mockDealRoomData.case_studies.map((study) => (
                     <div
                       key={study.id}
                       className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
@@ -461,10 +501,10 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {dealRoom.objection_responses.map((objection) => (
-                  <div key={objection.key} className="p-3 rounded-lg bg-secondary/50 border border-border">
+                {rawObjections.map((objection: any, i: number) => (
+                  <div key={i} className="p-3 rounded-lg bg-secondary/50 border border-border">
                     <p className="text-xs font-medium text-amber-400 mb-1 capitalize">
-                      {objection.label}
+                      {objection.label || objection.objection}
                     </p>
                     <p className="text-sm text-foreground">{objection.response}</p>
                   </div>
@@ -486,14 +526,14 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                     <Timer className="w-4 h-4 text-amber-400" />
                     <p className="text-sm font-medium text-amber-400">Limited Spots</p>
                   </div>
-                  <p className="text-sm text-foreground">{dealRoom.urgency_close.limited_spots}</p>
+                  <p className="text-sm text-foreground">{mockDealRoomData.urgency_close.limited_spots}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-card/50 border border-emerald-500/30">
                   <div className="flex items-center gap-2 mb-1">
                     <BadgeCheck className="w-4 h-4 text-emerald-400" />
                     <p className="text-sm font-medium text-emerald-400">Social Proof</p>
                   </div>
-                  <p className="text-sm text-foreground">{dealRoom.urgency_close.social_proof}</p>
+                  <p className="text-sm text-foreground">{mockDealRoomData.urgency_close.social_proof}</p>
                 </div>
                 <Button
                   className="w-full bg-gradient-to-r from-primary to-chart-2 text-primary-foreground"
@@ -619,9 +659,9 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                 <CardTitle className="text-lg font-semibold">Quick Responses</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {dealRoom.objection_responses.map((objection) => (
+                {rawObjections.map((objection: any, i: number) => (
                   <Button
-                    key={objection.key}
+                    key={i}
                     variant="outline"
                     className="w-full justify-start text-left h-auto py-3 border-border"
                     onClick={() => handleQuickResponse(objection.response)}
@@ -646,17 +686,17 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Deal Size</span>
                   <span className="font-medium text-foreground">
-                    {dealRoom.pricing.currency === "INR" ? "₹" : "$"}
-                    {dealRoom.pricing.recommended_offer.toLocaleString()}
+                    {mockDealRoomData.pricing.currency === "INR" ? "₹" : "$"}
+                    {safePrice.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Health</span>
-                  <span className="font-medium text-emerald-400">{dealRoom.pricing.win_probability}%</span>
+                  <span className="font-medium text-emerald-400">{isScoring ? "..." : leadScore}%</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Swarm Vote</span>
-                  <span className="font-medium text-foreground">{approveCount}/10 CLOSE NOW</span>
+                  <span className="font-medium text-foreground">{rasApproveCount}/10 AGREE</span>
                 </div>
               </CardContent>
             </Card>
@@ -677,40 +717,40 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                      {ras.approveCount} Approve
-                    </Badge>
-                    <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20">
-                      {ras.holdCount} Hold
+                      {rasApproveCount} Approve
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {ras.agents.map((agent) => {
-                    const Icon = agentIcons[agent.iconType];
-                    const VoteIcon = voteIcons[agent.vote];
+                  {Object.entries(rasDimensions).map(([key, value]) => {
+                    const agentName = key.replace("_score", "").toUpperCase() + " AGENT";
+                    const Confidence = Number(value) || 0;
                     return (
                       <div
-                        key={agent.id}
+                        key={key}
                         className={cn(
                           "p-4 rounded-lg border transition-all",
-                          voteColors[agent.vote]
+                          Confidence >= 70 ? voteColors.approve : voteColors.hold
                         )}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg bg-card flex items-center justify-center">
-                              <Icon className="w-4 h-4" />
+                              <Star className="w-4 h-4 text-emerald-400" />
                             </div>
-                            <span className="font-medium text-sm">{agent.name}</span>
+                            <span className="font-medium text-sm">{agentName}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-xs font-semibold">{agent.confidence}%</span>
-                            <VoteIcon className="w-5 h-5" />
+                            <span className="text-xs font-semibold">{Confidence}%</span>
+                            {Confidence >= 70 ? (
+                              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                            ) : (
+                               <Pause className="w-5 h-5 text-amber-400" />
+                            )}
                           </div>
                         </div>
-                        <p className="text-xs text-foreground/80">{agent.reason}</p>
                       </div>
                     );
                   })}
@@ -731,27 +771,20 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
               <CardContent className="space-y-4">
                 <div className="text-center py-4">
                   <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 border-4 border-emerald-500/40 flex items-center justify-center mb-3">
-                    <span className="text-3xl font-bold text-emerald-400">{ras.approveCount}/10</span>
+                    <span className="text-3xl font-bold text-emerald-400">{rasAverage.toFixed(0)}</span>
                   </div>
                   <p className="text-lg font-bold text-emerald-400">
-                    {ras.decision === "close_now" ? "CLOSE NOW" : ras.decision.toUpperCase().replace("_", " ")}
+                    {ras?.status === "approve" ? "APPROVE DEAL" : "HOLD DEAL"}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-1">High confidence deal</p>
+                  <p className="text-sm text-muted-foreground mt-1">Based on deepseek analysis</p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Approve</span>
+                    <span className="text-muted-foreground">Approve Score</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(ras.approveCount / 10) * 100} className="w-24 h-2" />
-                      <span className="font-medium text-emerald-400">{ras.approveCount}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Hold</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={(ras.holdCount / 10) * 100} className="w-24 h-2 [&>div]:bg-amber-400" />
-                      <span className="font-medium text-amber-400">{ras.holdCount}</span>
+                      <Progress value={rasAverage} className="w-24 h-2" />
+                      <span className="font-medium text-emerald-400">{rasAverage.toFixed(0)}%</span>
                     </div>
                   </div>
                 </div>
@@ -778,7 +811,7 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
               <CardContent className="space-y-3">
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                   <p className="text-sm text-foreground">
-                    {ras.recommendedAction}. Mention limited Pro slots.
+                    Based on {safeWinProb}% win probability, proceed to close sequence with deepseek generated value props.
                   </p>
                 </div>
                 <Button variant="outline" className="w-full border-border">

@@ -27,7 +27,7 @@ const fetcher = async <T>(url: string): Promise<T> => {
     throw new Error("API request failed");
   }
   const json = await res.json();
-  return json.data;
+  return json.data !== undefined ? json.data : json;
 };
 
 const postFetcher = async <T>(
@@ -43,7 +43,7 @@ const postFetcher = async <T>(
     throw new Error("API request failed");
   }
   const json = await res.json();
-  return json.data;
+  return json.data !== undefined ? json.data : json;
 };
 
 // ==========================================
@@ -58,6 +58,13 @@ export function useLeads(page = 1, limit = 20, config?: SWRConfiguration) {
   );
 }
 
+export function useEnrichLead() {
+  return useSWRMutation<any, Error, string, { leadId: string }>(
+    "/enrich",
+    (url, { arg }) => postFetcher(`${url}/${arg.leadId}`, { arg: {} })
+  );
+}
+
 export function useLead(id: string | null, config?: SWRConfiguration) {
   return useSWR<Lead>(id ? `/leads/${id}` : null, fetcher, config);
 }
@@ -69,13 +76,20 @@ export function useLeadSearch() {
   );
 }
 
+export function useLeadScoring() {
+  return useSWRMutation<any, Error, string, { leadData: any }>(
+    "/scoring/prospect",
+    (url, { arg }) => postFetcher(url, { arg })
+  );
+}
+
 // ==========================================
 // Deal Room Hooks
 // ==========================================
 
 export function useDealRoom(leadId: string | null, config?: SWRConfiguration) {
   return useSWR<DealRoomData>(
-    leadId ? `/deal-room/lead/${leadId}` : null,
+    leadId ? `/api/deal-room/${leadId}` : null,
     fetcher,
     config
   );
@@ -116,7 +130,7 @@ export function useSendPaymentLink() {
 
 export function useRAS(leadId: string | null, config?: SWRConfiguration) {
   return useSWR<RASData>(
-    leadId ? `/ras/lead/${leadId}` : null,
+    leadId ? `/api/ras/${leadId}` : null,
     fetcher,
     config
   );
@@ -261,16 +275,8 @@ export function useLeaderboard(config?: SWRConfiguration) {
 // Forecast Hooks
 // ==========================================
 
-export function useForecast(
-  period: "monthly" | "quarterly" = "monthly",
-  count = 6,
-  config?: SWRConfiguration
-) {
-  return useSWR<ForecastData[]>(
-    `/forecast/${period}?${period === "monthly" ? "months" : "quarters"}=${count}`,
-    fetcher,
-    config
-  );
+export function useDashboardForecast(config?: SWRConfiguration) {
+  return useSWR<any>("/api/forecast", fetcher, config);
 }
 
 export function useForecastPipeline(config?: SWRConfiguration) {

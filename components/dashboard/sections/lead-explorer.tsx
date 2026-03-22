@@ -46,6 +46,7 @@ interface ChatMessage {
   type: "user" | "assistant";
   content: string;
   timestamp: Date;
+  leads?: any[];
 }
 
 interface ChatHistory {
@@ -70,31 +71,131 @@ export function LeadExplorerSection() {
   const [chatHistories] = useState<ChatHistory[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!inputValue.trim()) return;
+    
+    const messageContent = inputValue;
+    const isSearch = messageContent.toLowerCase().startsWith("/search") || messageContent.toLowerCase().includes("prospect");
+    const isCampaign = messageContent === "Generate a Full Campaign";
     
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       type: "user",
-      content: inputValue,
+      content: messageContent,
       timestamp: new Date(),
     };
     
-    setMessages([...messages, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
     setInputValue("");
     setIsLoading(true);
-    
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: "assistant",
-        content: "I'm analyzing your request. Let me help you find the best prospects based on your criteria...",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiResponse]);
+
+    const aiMessageId = (Date.now() + 1).toString();
+    const aiMessage: ChatMessage = {
+      id: aiMessageId,
+      type: "assistant",
+      content: "",
+      timestamp: new Date(),
+      leads: [],
+    };
+    setMessages((prev) => [...prev, aiMessage]);
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://zarvio-backend.onrender.com";
+      
+      if (isSearch) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === aiMessageId
+              ? { ...msg, content: "Searching for leads based on your query..." }
+              : msg
+          )
+        );
+        const searchResponse = await fetch(`${baseUrl}/api/leads/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: messageContent.replace("/search", "").trim() }),
+        });
+        
+        if (!searchResponse.ok) throw new Error("Search API request failed");
+        
+        const searchData = await searchResponse.json();
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === aiMessageId
+              ? { 
+                  ...msg, 
+                  content: `Found ${searchData.leads?.length || 0} leads matching your criteria.`,
+                  leads: searchData.leads || []
+                }
+              : msg
+          )
+        );
+      } else if (isCampaign) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === aiMessageId
+              ? { ...msg, content: "Generating a full campaign for Lead 1..." }
+              : msg
+          )
+        );
+        const outreachResponse = await fetch(`${baseUrl}/outreach/generate/1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
+        });
+        
+        if (!outreachResponse.ok) throw new Error("Outreach API request failed");
+        
+        const outreachData = await outreachResponse.json();
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === aiMessageId
+              ? { 
+                  ...msg, 
+                  content: "Campaign generated successfully! \n" + JSON.stringify(outreachData, null, 2)
+                }
+              : msg
+          )
+        );
+      } else {
+        const response = await fetch(`${baseUrl}/api/copilot`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: messageContent, user_id: "user-123" }),
+        });
+
+        if (!response.ok) throw new Error("API request failed");
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            
+            setMessages((prev) => 
+              prev.map((msg) => 
+                msg.id === aiMessageId 
+                  ? { ...msg, content: msg.content + chunk } 
+                  : msg
+              )
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Agent error:", error);
+      setMessages((prev) => 
+        prev.map((msg) => 
+          msg.id === aiMessageId 
+            ? { ...msg, content: "Sorry, I encountered an error fulfilling your request." } 
+            : msg
+        )
+      );
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleQuickAction = (action: QuickAction) => {
@@ -289,13 +390,31 @@ export function LeadExplorerSection() {
                   )}
                   <div
                     className={cn(
-                      "max-w-[80%] px-4 py-3 rounded-xl",
+                      "max-w-[80%] px-4 py-3 rounded-xl flex flex-col gap-2",
                       message.type === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-card border border-border text-foreground"
                     )}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    
+                    {message.leads && message.leads.length > 0 && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+                        {message.leads.map((lead: any, i: number) => (
+                          <div key={i} className="p-3 bg-secondary/30 border border-border rounded-lg flex flex-col gap-1">
+                            <p className="text-sm font-semibold">{lead.company_name || lead.name || "Unknown Lead"}</p>
+                            <p className="text-xs text-muted-foreground">{lead.title || "Target Prospect"}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {lead.keywords?.slice(0, 2).map((kw: string, k: number) => (
+                                <span key={k} className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
