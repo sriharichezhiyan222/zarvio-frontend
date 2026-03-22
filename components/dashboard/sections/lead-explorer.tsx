@@ -157,13 +157,36 @@ export function LeadExplorerSection() {
           )
         );
       } else {
+        const getUserId = () => {
+          if (typeof window === "undefined") return "anonymous";
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.includes("-auth-token")) {
+                const data = JSON.parse(localStorage.getItem(key) || "{}");
+                if (data?.user?.id) return data.user.id;
+              }
+            }
+          } catch (e) {}
+          return "anonymous";
+        };
+        const userId = getUserId();
+        
+        const payload = { message: messageContent, user_id: userId };
+        console.log("DEBUG: Calling /api/copilot with payload:", payload);
+
         const response = await fetch(`${baseUrl}/api/copilot`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: messageContent, user_id: "user-123" }),
+          body: JSON.stringify(payload),
         });
 
-        if (!response.ok) throw new Error("API request failed");
+        console.log("DEBUG: /api/copilot Response Status:", response.status, response.statusText);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("DEBUG: /api/copilot Response Error Body:", errorText);
+          throw new Error(`API request failed with status ${response.status}`);
+        }
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
