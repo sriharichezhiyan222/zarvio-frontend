@@ -42,11 +42,11 @@ interface SidebarProps {
 
 const mainNavItems: { id: Section; label: string; icon: React.ElementType; badge?: string }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "lead-explorer", label: "Lead Explorer", icon: Search },
   { id: "campaign", label: "Campaign", icon: Megaphone },
   { id: "deals", label: "Deals", icon: Handshake },
   { id: "deal-room", label: "Deal Room", icon: DoorOpen },
   { id: "ras", label: "RAS", icon: Bot, badge: "AI" },
-  { id: "lead-explorer", label: "Lead Explorer", icon: Search },
   { id: "customers", label: "Customers", icon: Building2 },
   { id: "team", label: "Team", icon: Users },
   { id: "forecasting", label: "Forecasting", icon: TrendingUp },
