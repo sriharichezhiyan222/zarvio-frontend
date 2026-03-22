@@ -172,8 +172,14 @@ export function LeadExplorerSection() {
         };
         const userId = getUserId();
         
-        const payload = { message: messageContent, user_id: userId };
-        console.log("DEBUG: Calling /api/copilot with payload:", payload);
+        const conversationHistory = messages.map(m => ({
+          role: m.type,
+          content: m.content
+        }));
+        conversationHistory.push({ role: "user", content: messageContent });
+        
+        const payload = { messages: conversationHistory, user_id: userId };
+        console.log("DEBUG: Calling /api/copilot with payload:", JSON.stringify(payload, null, 2));
 
         const response = await fetch(`${baseUrl}/api/copilot`, {
           method: "POST",
