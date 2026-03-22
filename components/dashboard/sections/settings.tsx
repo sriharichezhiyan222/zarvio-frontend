@@ -31,7 +31,9 @@ import {
   Check,
   ExternalLink,
   Zap,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const integrations = [
   {
@@ -117,9 +119,19 @@ const notificationSettings = [
 ];
 
 export function SettingsSection() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("profile");
   const [notifications, setNotifications] = useState(notificationSettings);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = () => {
+    setIsSigningOut(true);
+    // TODO: Connect to API - authApi.signOut()
+    setTimeout(() => {
+      router.push("/");
+    }, 1000);
+  };
 
   const handleSave = () => {
     setIsSaving(true);
@@ -564,6 +576,47 @@ export function SettingsSection() {
                     )}
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sign Out Section */}
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardHeader>
+              <CardTitle className="text-base font-medium text-destructive">Sign Out</CardTitle>
+              <CardDescription>Sign out of your account on this device</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
+                    <LogOut className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">End your current session</p>
+                    <p className="text-sm text-muted-foreground">
+                      You will be redirected to the home page
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="min-w-[120px]"
+                >
+                  {isSigningOut ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Signing out...
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
