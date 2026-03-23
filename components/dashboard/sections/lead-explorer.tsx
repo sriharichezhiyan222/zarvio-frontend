@@ -22,6 +22,7 @@ import {
   History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiJson, apiStream, getAuthContext } from "@/lib/client-api";
 
 interface QuickAction {
   id: string;
@@ -100,8 +101,6 @@ export function LeadExplorerSection() {
     setMessages((prev) => [...prev, aiMessage]);
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://zarvio-backend.onrender.com";
-      
       if (isSearch) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -110,22 +109,26 @@ export function LeadExplorerSection() {
               : msg
           )
         );
-        const searchResponse = await fetch(`${baseUrl}/api/leads/search`, {
+        const query = messageContent.replace("/search", "").trim();
+        const searchData = await apiJson<any>("/api/leads/search", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: messageContent.replace("/search", "").trim() }),
+          body: JSON.stringify({ query }),
         });
-        
-        if (!searchResponse.ok) throw new Error("Search API request failed");
-        
-        const searchData = await searchResponse.json();
+        let leads = searchData.leads || [];
+        if (leads.length === 0) {
+          const fallback = await apiJson<any>("/api/find-leads", {
+            method: "POST",
+            body: JSON.stringify({ query }),
+          });
+          leads = fallback.leads || fallback.results || [];
+        }
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === aiMessageId
               ? { 
                   ...msg, 
-                  content: `Found ${searchData.leads?.length || 0} leads matching your criteria.`,
-                  leads: searchData.leads || []
+                  content: `Found ${leads.length || 0} leads matching your criteria.`,
+                  leads
                 }
               : msg
           )
@@ -138,14 +141,10 @@ export function LeadExplorerSection() {
               : msg
           )
         );
-        const outreachResponse = await fetch(`${baseUrl}/outreach/generate/1`, {
+        const firstLeadId = messages.flatMap((m) => m.leads || [])[0]?.id;
+        const outreachData = await apiJson<any>(`/outreach/generate/${firstLeadId || 1}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" }
         });
-        
-        if (!outreachResponse.ok) throw new Error("Outreach API request failed");
-        
-        const outreachData = await outreachResponse.json();
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === aiMessageId
@@ -157,61 +156,23 @@ export function LeadExplorerSection() {
           )
         );
       } else {
-        const getUserId = () => {
-          if (typeof window === "undefined") return "anonymous";
-          try {
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && key.includes("-auth-token")) {
-                const data = JSON.parse(localStorage.getItem(key) || "{}");
-                if (data?.user?.id) return data.user.id;
-              }
-            }
-          } catch (e) {}
-          return "anonymous";
-        };
-        const userId = getUserId();
+        const { userId } = getAuthContext();
         
         const conversationHistory = messages.map(m => ({
-          role: m.type,
+          role: m.type === "assistant" ? "assistant" : "user",
           content: m.content
         }));
         conversationHistory.push({ role: "user", content: messageContent });
         
-        const payload = { messages: conversationHistory, user_id: userId };
-        console.log("DEBUG: Calling /api/copilot with payload:", JSON.stringify(payload, null, 2));
-
-        const response = await fetch(`${baseUrl}/api/copilot`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        console.log("DEBUG: /api/copilot Response Status:", response.status, response.statusText);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("DEBUG: /api/copilot Response Error Body:", errorText);
-          throw new Error(`API request failed with status ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            
-            setMessages((prev) => 
-              prev.map((msg) => 
-                msg.id === aiMessageId 
-                  ? { ...msg, content: msg.content + chunk } 
-                  : msg
-              )
+        await apiStream(
+          "/api/copilot",
+          { messages: conversationHistory, user_id: userId || "anonymous" },
+          (chunk) => {
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === aiMessageId ? { ...msg, content: msg.content + chunk } : msg))
             );
           }
-        }
+        );
       }
     } catch (error) {
       console.error("Agent error:", error);

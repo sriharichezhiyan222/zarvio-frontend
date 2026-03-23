@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { apiJson } from "@/lib/client-api";
 import {
   Building2,
   Search,
@@ -22,98 +23,21 @@ import {
   Filter,
 } from "lucide-react";
 
-const customers = [
-  {
-    id: 1,
-    name: "Acme Corporation",
-    industry: "Technology",
-    tier: "Enterprise",
-    location: "San Francisco, CA",
-    contact: "John Smith",
-    email: "john@acme.com",
-    phone: "+1 (555) 123-4567",
-    totalRevenue: 485000,
-    activeDeals: 3,
-    healthScore: 92,
-    trend: "up",
-    lastContact: "2 days ago",
-  },
-  {
-    id: 2,
-    name: "GlobalTech Industries",
-    industry: "Manufacturing",
-    tier: "Enterprise",
-    location: "New York, NY",
-    contact: "Sarah Johnson",
-    email: "sarah@globaltech.com",
-    phone: "+1 (555) 234-5678",
-    totalRevenue: 320000,
-    activeDeals: 2,
-    healthScore: 85,
-    trend: "up",
-    lastContact: "1 week ago",
-  },
-  {
-    id: 3,
-    name: "Innovate Labs",
-    industry: "Healthcare",
-    tier: "Growth",
-    location: "Boston, MA",
-    contact: "Michael Chen",
-    email: "michael@innovatelabs.com",
-    phone: "+1 (555) 345-6789",
-    totalRevenue: 156000,
-    activeDeals: 1,
-    healthScore: 78,
-    trend: "stable",
-    lastContact: "3 days ago",
-  },
-  {
-    id: 4,
-    name: "DataStream Analytics",
-    industry: "Data Services",
-    tier: "Growth",
-    location: "Austin, TX",
-    contact: "Emily Rodriguez",
-    email: "emily@datastream.com",
-    phone: "+1 (555) 456-7890",
-    totalRevenue: 98000,
-    activeDeals: 2,
-    healthScore: 65,
-    trend: "down",
-    lastContact: "2 weeks ago",
-  },
-  {
-    id: 5,
-    name: "NextGen Solutions",
-    industry: "Finance",
-    tier: "Starter",
-    location: "Chicago, IL",
-    contact: "David Park",
-    email: "david@nextgen.com",
-    phone: "+1 (555) 567-8901",
-    totalRevenue: 45000,
-    activeDeals: 1,
-    healthScore: 88,
-    trend: "up",
-    lastContact: "Yesterday",
-  },
-  {
-    id: 6,
-    name: "CloudFirst Inc",
-    industry: "Cloud Services",
-    tier: "Enterprise",
-    location: "Seattle, WA",
-    contact: "Lisa Wang",
-    email: "lisa@cloudfirst.com",
-    phone: "+1 (555) 678-9012",
-    totalRevenue: 275000,
-    activeDeals: 4,
-    healthScore: 95,
-    trend: "up",
-    lastContact: "Today",
-  },
-];
+type CustomerRow = {
+  id: string | number;
+  name: string;
+  industry: string;
+  tier: string;
+  location: string;
+  contact: string;
+  email: string;
+  phone: string;
+  totalRevenue: number;
+  activeDeals: number;
+  healthScore: number;
+  trend: "up" | "down" | "stable";
+  lastContact: string;
+};
 
 const tierColors: Record<string, string> = {
   Enterprise: "bg-accent/20 text-accent border-accent/30",
@@ -124,14 +48,52 @@ const tierColors: Record<string, string> = {
 export function CustomersSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch =
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.contact.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTier = !selectedTier || customer.tier === selectedTier;
-    return matchesSearch && matchesTier;
-  });
+  useEffect(() => {
+    const loadCustomers = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await apiJson<any[]>("/hubspot/contacts");
+        const normalized = (Array.isArray(data) ? data : []).map((item, idx) => ({
+          id: item.id ?? idx,
+          name: item.company || item.company_name || item.name || "Unknown company",
+          industry: item.industry || "Unknown",
+          tier: item.tier || "Starter",
+          location: item.location || "-",
+          contact: item.contact || item.full_name || item.name || "-",
+          email: item.email || "-",
+          phone: item.phone || "-",
+          totalRevenue: Number(item.totalRevenue || item.total_value || 0),
+          activeDeals: Number(item.activeDeals || item.active_deals || 0),
+          healthScore: Number(item.healthScore || item.health_score || 0),
+          trend: item.trend === "up" || item.trend === "down" ? item.trend : "stable",
+          lastContact: item.lastContact || item.last_contact || "-",
+        }));
+        setCustomers(normalized);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load customers");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCustomers();
+  }, []);
+
+  const filteredCustomers = useMemo(
+    () =>
+      customers.filter((customer) => {
+        const matchesSearch =
+          customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          customer.contact.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesTier = !selectedTier || customer.tier === selectedTier;
+        return matchesSearch && matchesTier;
+      }),
+    [customers, searchQuery, selectedTier]
+  );
 
   const totalRevenue = customers.reduce((acc, c) => acc + c.totalRevenue, 0);
   const avgHealthScore = Math.round(
@@ -188,6 +150,12 @@ export function CustomersSection() {
         ))}
       </div>
 
+      {error && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Failed to load customers: {error}
+        </div>
+      )}
+
       {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-3 flex-wrap">
@@ -223,6 +191,14 @@ export function CustomersSection() {
 
       {/* Customer Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {isLoading &&
+          Array.from({ length: 4 }).map((_, idx) => (
+            <Card key={`customer-skeleton-${idx}`} className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="h-24 animate-pulse rounded bg-secondary" />
+              </CardContent>
+            </Card>
+          ))}
         {filteredCustomers.map((customer, index) => (
           <Card
             key={customer.id}
@@ -339,6 +315,13 @@ export function CustomersSection() {
             </CardContent>
           </Card>
         ))}
+        {!isLoading && filteredCustomers.length === 0 && (
+          <Card className="border-dashed border-border bg-card lg:col-span-2">
+            <CardContent className="p-8 text-center text-sm text-muted-foreground">
+              Add your first lead to get started.
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

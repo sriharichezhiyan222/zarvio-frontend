@@ -36,60 +36,13 @@ import {
   Legend,
 } from "recharts";
 
-const forecastData = [
-  { month: "Jan", actual: 420000, forecast: 400000, target: 450000 },
-  { month: "Feb", actual: 480000, forecast: 460000, target: 450000 },
-  { month: "Mar", actual: 510000, forecast: 500000, target: 500000 },
-  { month: "Apr", actual: 485000, forecast: 520000, target: 500000 },
-  { month: "May", actual: 560000, forecast: 550000, target: 550000 },
-  { month: "Jun", actual: 620000, forecast: 600000, target: 550000 },
-  { month: "Jul", actual: null, forecast: 650000, target: 600000 },
-  { month: "Aug", actual: null, forecast: 680000, target: 600000 },
-  { month: "Sep", actual: null, forecast: 720000, target: 650000 },
-  { month: "Oct", actual: null, forecast: 750000, target: 650000 },
-  { month: "Nov", actual: null, forecast: 800000, target: 700000 },
-  { month: "Dec", actual: null, forecast: 850000, target: 700000 },
-];
+const forecastData: { month: string; actual: number | null; forecast: number; target: number }[] = [];
 
-const quarterlyForecast = [
-  { quarter: "Q1", committed: 1200000, bestCase: 1450000, pipeline: 1800000 },
-  { quarter: "Q2", committed: 1500000, bestCase: 1750000, pipeline: 2100000 },
-  { quarter: "Q3", committed: 1800000, bestCase: 2100000, pipeline: 2500000 },
-  { quarter: "Q4", committed: 2200000, bestCase: 2600000, pipeline: 3000000 },
-];
+const quarterlyForecast: { quarter: string; committed: number; bestCase: number; pipeline: number }[] = [];
 
-const riskFactors = [
-  {
-    id: 1,
-    title: "Deal Slippage Risk",
-    description: "3 deals at risk of pushing to next quarter",
-    impact: "-$180,000",
-    severity: "high",
-    deals: ["Acme Corp Enterprise", "GlobalTech Phase 2", "DataStream Analytics"],
-  },
-  {
-    id: 2,
-    title: "Competitor Activity",
-    description: "Increased competition in mid-market segment",
-    impact: "-$95,000",
-    severity: "medium",
-    deals: ["NextGen Solutions", "CloudFirst Expansion"],
-  },
-  {
-    id: 3,
-    title: "Budget Freeze Warning",
-    description: "2 accounts reported potential budget freezes",
-    impact: "-$120,000",
-    severity: "high",
-    deals: ["Innovate Labs", "TechStart Inc"],
-  },
-];
+const riskFactors: { id: number; title: string; description: string; impact: string; severity: string; deals: string[] }[] = [];
 
-const scenarios = [
-  { name: "Conservative", probability: 85, revenue: 6200000, color: "chart-4" },
-  { name: "Base Case", probability: 65, revenue: 7400000, color: "accent" },
-  { name: "Optimistic", probability: 40, revenue: 8600000, color: "chart-1" },
-];
+const scenarios: { name: string; probability: number; revenue: number; color: string }[] = [];
 
 export function ForecastingSection() {
   const [timeframe, setTimeframe] = useState("quarterly");
@@ -99,24 +52,24 @@ export function ForecastingSection() {
     return <div className="p-8 text-center text-destructive bg-destructive/10 rounded-xl border border-destructive/20 mt-6">Failed to load forecast data.</div>;
   }
 
-  const currentQuarterTarget = 1800000;
+  const currentQuarterTarget = apiData?.breakdown?.pipeline || 0;
   // Use API total if available, else fallback
   const currentQuarterForecast = apiData?.breakdown?.committed 
     ? apiData.breakdown.committed + apiData.breakdown.best_case
-    : 2100000;
-  const forecastAccuracy = 94;
-  const pipelineCoverage = 3.2;
+    : 0;
+  const forecastAccuracy = apiData?.monthly_actuals?.length ? 100 : 0;
+  const pipelineCoverage = currentQuarterTarget > 0 ? Number((currentQuarterForecast / currentQuarterTarget).toFixed(2)) : 0;
 
   let displayForecastData = forecastData;
   if (apiData?.monthly_actuals && apiData?.monthly_forecast) {
     const months = ["M1", "M2", "M3", "M4", "M5", "M6"];
     displayForecastData = [
-      { month: months[0], actual: apiData.monthly_actuals[0] || 0, forecast: apiData.monthly_actuals[0] || 0, target: 450000 },
-      { month: months[1], actual: apiData.monthly_actuals[1] || 0, forecast: apiData.monthly_actuals[1] || 0, target: 450000 },
-      { month: months[2], actual: apiData.monthly_actuals[2] || 0, forecast: apiData.monthly_actuals[2] || 0, target: 500000 },
-      { month: months[3], actual: null, forecast: apiData.monthly_forecast[0] || 0, target: 500000 },
-      { month: months[4], actual: null, forecast: apiData.monthly_forecast[1] || 0, target: 550000 },
-      { month: months[5], actual: null, forecast: apiData.monthly_forecast[2] || 0, target: 550000 },
+      { month: months[0], actual: apiData.monthly_actuals[0] || 0, forecast: apiData.monthly_actuals[0] || 0, target: apiData.monthly_actuals[0] || 0 },
+      { month: months[1], actual: apiData.monthly_actuals[1] || 0, forecast: apiData.monthly_actuals[1] || 0, target: apiData.monthly_actuals[1] || 0 },
+      { month: months[2], actual: apiData.monthly_actuals[2] || 0, forecast: apiData.monthly_actuals[2] || 0, target: apiData.monthly_actuals[2] || 0 },
+      { month: months[3], actual: null, forecast: apiData.monthly_forecast[0] || 0, target: apiData.monthly_forecast[0] || 0 },
+      { month: months[4], actual: null, forecast: apiData.monthly_forecast[1] || 0, target: apiData.monthly_forecast[1] || 0 },
+      { month: months[5], actual: null, forecast: apiData.monthly_forecast[2] || 0, target: apiData.monthly_forecast[2] || 0 },
     ];
   }
 
@@ -177,7 +130,7 @@ export function ForecastingSection() {
             value: `$${(currentQuarterForecast / 1000000).toFixed(1)}M`,
             subtext: `Target: $${(currentQuarterTarget / 1000000).toFixed(1)}M`,
             icon: Target,
-            trend: "+17%",
+            trend: "0%",
             trendUp: true,
           },
           {
@@ -185,7 +138,7 @@ export function ForecastingSection() {
             value: `${forecastAccuracy}%`,
             subtext: "Last 6 months avg",
             icon: CheckCircle2,
-            trend: "+2.3%",
+            trend: "0%",
             trendUp: true,
           },
           {
@@ -193,15 +146,15 @@ export function ForecastingSection() {
             value: `${pipelineCoverage}x`,
             subtext: "vs quota",
             icon: TrendingUp,
-            trend: "+0.4x",
+            trend: "0x",
             trendUp: true,
           },
           {
             label: "At-Risk Revenue",
-            value: "$395K",
-            subtext: "3 deals flagged",
+            value: "$0",
+            subtext: "No flagged deals",
             icon: AlertTriangle,
-            trend: "-12%",
+            trend: "0%",
             trendUp: false,
           },
         ].map((stat, index) => (
@@ -373,6 +326,9 @@ export function ForecastingSection() {
             <CardTitle className="text-base font-medium">Scenario Analysis</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {scenarios.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground">No scenario data available yet.</div>
+            )}
             {scenarios.map((scenario, index) => (
               <div
                 key={scenario.name}
@@ -436,6 +392,9 @@ export function ForecastingSection() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {riskFactors.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground">No risk factors reported.</div>
+            )}
             {riskFactors.map((risk, index) => (
               <div
                 key={risk.id}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { OutreachTab } from "@/app/page";
+import { apiJson } from "@/lib/client-api";
 import {
   Mail,
   Phone,
@@ -61,30 +62,6 @@ interface MessageOutreach {
   sentAt?: string;
 }
 
-const mockEmails: EmailOutreach[] = [
-  { id: "1", recipient: "Anna Schmidt", company: "TechCorp Inc", subject: "Partnership Opportunity - Q2 Initiative", status: "replied", sentAt: "2 hours ago", openRate: 100 },
-  { id: "2", recipient: "Michael Chen", company: "DataFlow Systems", subject: "Follow-up: Product Demo Request", status: "opened", sentAt: "4 hours ago", openRate: 100 },
-  { id: "3", recipient: "Sarah Williams", company: "CloudNine Corp", subject: "Exclusive Offer for Enterprise Clients", status: "sent", sentAt: "6 hours ago" },
-  { id: "4", recipient: "James Rodriguez", company: "InnovateTech", subject: "Meeting Confirmation - Tuesday 3PM", status: "scheduled", scheduledFor: "Tomorrow, 9:00 AM" },
-  { id: "5", recipient: "Emily Davis", company: "GrowthLab", subject: "Re: Pricing Discussion", status: "bounced", sentAt: "1 day ago" },
-];
-
-const mockCalls: PhoneOutreach[] = [
-  { id: "1", contact: "Robert Johnson", company: "Enterprise Max", status: "completed", duration: "12:34", notes: "Interested in premium plan" },
-  { id: "2", contact: "Lisa Park", company: "SmartGrid Co", status: "scheduled", scheduledFor: "Today, 2:00 PM" },
-  { id: "3", contact: "David Kim", company: "TechForward", status: "voicemail", duration: "0:45", notes: "Left callback request" },
-  { id: "4", contact: "Jennifer Lee", company: "NextGen Labs", status: "no-answer", notes: "Try again tomorrow" },
-  { id: "5", contact: "Marcus Brown", company: "DataPrime Ltd", status: "completed", duration: "8:22", notes: "Scheduled demo for next week" },
-];
-
-const mockMessages: MessageOutreach[] = [
-  { id: "1", contact: "Alex Turner", company: "CloudBridge", platform: "linkedin", status: "replied", message: "Would love to connect regarding your SaaS platform...", sentAt: "1 hour ago" },
-  { id: "2", contact: "Sophia Martinez", company: "InnovatePlus", platform: "linkedin", status: "read", message: "Hi Sophia, I noticed your company is expanding...", sentAt: "3 hours ago" },
-  { id: "3", contact: "Daniel Wilson", company: "TechScale", platform: "whatsapp", status: "sent", message: "Following up on our conversation last week...", sentAt: "5 hours ago" },
-  { id: "4", contact: "Emma Thompson", company: "GrowthCorp", platform: "sms", status: "pending", message: "Quick reminder about tomorrow's meeting..." },
-  { id: "5", contact: "Chris Anderson", company: "DataMax", platform: "linkedin", status: "replied", message: "Thank you for your interest in our services...", sentAt: "1 day ago" },
-];
-
 const statusColors = {
   sent: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   opened: "bg-amber-500/10 text-amber-400 border-amber-500/20",
@@ -119,30 +96,98 @@ const platformIcons = {
 
 export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [emails, setEmails] = useState<EmailOutreach[]>([]);
+  const [calls, setCalls] = useState<PhoneOutreach[]>([]);
+  const [messages, setMessages] = useState<MessageOutreach[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const leads = await apiJson<any[]>("/leads");
+        const normalized = (Array.isArray(leads) ? leads : []).slice(0, 20);
+        setEmails(
+          normalized.map((lead, idx) => ({
+            id: String(lead.id ?? idx),
+            recipient: lead.name || "Unknown",
+            company: lead.company || "Unknown",
+            subject: lead.subject || `Intro for ${lead.company || "your company"}`,
+            status: "sent",
+            sentAt: lead.updated_at || "recently",
+          }))
+        );
+        setCalls(
+          normalized.map((lead, idx) => ({
+            id: String(lead.id ?? idx),
+            contact: lead.name || "Unknown",
+            company: lead.company || "Unknown",
+            status: "scheduled",
+            scheduledFor: "Pending",
+          }))
+        );
+        setMessages(
+          normalized.map((lead, idx) => ({
+            id: String(lead.id ?? idx),
+            contact: lead.name || "Unknown",
+            company: lead.company || "Unknown",
+            platform: "linkedin",
+            status: "pending",
+            message: "Draft pending generation",
+          }))
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const tabs = [
-    { id: "emails" as OutreachTab, label: "Emails", icon: Mail, count: mockEmails.length },
-    { id: "phone" as OutreachTab, label: "Phone", icon: Phone, count: mockCalls.length },
-    { id: "messages" as OutreachTab, label: "Messages", icon: MessageSquare, count: mockMessages.length },
+    { id: "emails" as OutreachTab, label: "Emails", icon: Mail, count: emails.length },
+    { id: "phone" as OutreachTab, label: "Phone", icon: Phone, count: calls.length },
+    { id: "messages" as OutreachTab, label: "Messages", icon: MessageSquare, count: messages.length },
   ];
 
   const stats = {
     emails: {
-      sent: mockEmails.filter(e => e.status === "sent" || e.status === "opened" || e.status === "replied").length,
-      opened: mockEmails.filter(e => e.status === "opened" || e.status === "replied").length,
-      replied: mockEmails.filter(e => e.status === "replied").length,
+      sent: emails.filter(e => e.status === "sent" || e.status === "opened" || e.status === "replied").length,
+      opened: emails.filter(e => e.status === "opened" || e.status === "replied").length,
+      replied: emails.filter(e => e.status === "replied").length,
     },
     phone: {
-      completed: mockCalls.filter(c => c.status === "completed").length,
-      scheduled: mockCalls.filter(c => c.status === "scheduled").length,
-      total: mockCalls.length,
+      completed: calls.filter(c => c.status === "completed").length,
+      scheduled: calls.filter(c => c.status === "scheduled").length,
+      total: calls.length || 1,
     },
     messages: {
-      sent: mockMessages.filter(m => m.status !== "pending").length,
-      replied: mockMessages.filter(m => m.status === "replied").length,
-      pending: mockMessages.filter(m => m.status === "pending").length,
+      sent: messages.filter(m => m.status !== "pending").length,
+      replied: messages.filter(m => m.status === "replied").length,
+      pending: messages.filter(m => m.status === "pending").length,
     },
   };
+
+  const filteredEmails = useMemo(
+    () =>
+      emails.filter((e) =>
+        `${e.recipient} ${e.company}`.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [emails, searchQuery]
+  );
+  const filteredCalls = useMemo(
+    () =>
+      calls.filter((c) =>
+        `${c.contact} ${c.company}`.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [calls, searchQuery]
+  );
+  const filteredMessages = useMemo(
+    () =>
+      messages.filter((m) =>
+        `${m.contact} ${m.company}`.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [messages, searchQuery]
+  );
 
   return (
     <div className="space-y-6">
@@ -355,7 +400,7 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
-            {activeTab === "emails" && mockEmails.map((email, index) => {
+            {activeTab === "emails" && filteredEmails.map((email, index) => {
               const StatusIcon = statusIcons[email.status];
               return (
                 <div
@@ -386,7 +431,7 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
                 </div>
               );
             })}
-            {activeTab === "phone" && mockCalls.map((call, index) => {
+            {activeTab === "phone" && filteredCalls.map((call, index) => {
               const StatusIcon = statusIcons[call.status];
               return (
                 <div
@@ -417,7 +462,7 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
                 </div>
               );
             })}
-            {activeTab === "messages" && mockMessages.map((message, index) => {
+            {activeTab === "messages" && filteredMessages.map((message, index) => {
               const StatusIcon = statusIcons[message.status];
               return (
                 <div
@@ -448,6 +493,14 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
                 </div>
               );
             })}
+            {!isLoading &&
+              ((activeTab === "emails" && filteredEmails.length === 0) ||
+                (activeTab === "phone" && filteredCalls.length === 0) ||
+                (activeTab === "messages" && filteredMessages.length === 0)) && (
+                <div className="p-10 text-center text-sm text-muted-foreground">
+                  Add your first lead to get started.
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>
