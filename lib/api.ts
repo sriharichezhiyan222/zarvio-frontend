@@ -16,6 +16,8 @@ import type {
   OutreachCall,
   OutreachMessage,
   ReportMetric,
+  OverviewStats,
+  ForecastSummary,
 } from "./types";
 
 // ==========================================
@@ -254,6 +256,8 @@ export const dealApi = {
     apiRequest<Deal[]>(`/deals/stage/${stage}`),
 
   getPipeline: () => apiRequest<PipelineStage[]>(`/deals/pipeline`),
+
+  getStats: () => apiRequest<OverviewStats>("/stats/overview"),
 };
 
 // ==========================================
@@ -298,6 +302,8 @@ export const teamApi = {
 // ==========================================
 
 export const forecastApi = {
+  getSummary: () => apiRequest<ForecastSummary>("/forecast"),
+  
   getMonthly: (months = 6) =>
     apiRequest<ForecastData[]>(`/forecast/monthly?months=${months}`),
 

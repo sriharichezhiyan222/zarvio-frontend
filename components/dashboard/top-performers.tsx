@@ -1,16 +1,28 @@
 "use client";
 
-import { Trophy, TrendingUp } from "lucide-react";
-
-const performers = [
-  { name: "Sarah Chen", deals: 24, revenue: "$487,500", change: "+15%", rank: 1 },
-  { name: "Mike Johnson", deals: 19, revenue: "$356,200", change: "+8%", rank: 2 },
-  { name: "Emily Davis", deals: 17, revenue: "$312,800", change: "+12%", rank: 3 },
-  { name: "James Wilson", deals: 15, revenue: "$289,400", change: "+5%", rank: 4 },
-  { name: "Lisa Park", deals: 14, revenue: "$267,100", change: "+9%", rank: 5 },
-];
+import { Trophy, TrendingUp, UserPlus } from "lucide-react";
 
 export function TopPerformers() {
+  // Empty state by default for now as team data isn't in API yet
+  const performers: any[] = [];
+
+  if (performers.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-5 flex flex-col items-center justify-center text-center h-[400px] animate-in fade-in">
+        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
+          <UserPlus className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-semibold text-foreground">Top Performers</h3>
+        <p className="text-sm text-muted-foreground mt-1 mb-6 max-w-[240px]">
+          Add team members to track performance and see leaderboards
+        </p>
+        <button className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+          Invite your team
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-card border border-border rounded-xl p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
       <div className="flex items-center justify-between mb-5">
@@ -33,7 +45,7 @@ export function TopPerformers() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent/80 to-chart-1 flex items-center justify-center text-sm font-semibold text-accent-foreground">
-                  {person.name.split(" ").map((n) => n[0]).join("")}
+                  {person.name.split(" ").map((n: string) => n[0]).join("")}
                 </div>
                 {person.rank <= 3 && (
                   <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-warning text-[10px] font-bold flex items-center justify-center text-background">

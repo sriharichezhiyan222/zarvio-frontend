@@ -11,6 +11,7 @@ interface MetricCardProps {
   changeType: "positive" | "negative" | "neutral";
   icon: LucideIcon;
   delay?: number;
+  isLoading?: boolean;
 }
 
 export function MetricCard({
@@ -20,7 +21,22 @@ export function MetricCard({
   changeType,
   icon: Icon,
   delay = 0,
+  isLoading = false,
 }: MetricCardProps) {
+  if (isLoading) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-5 animate-pulse h-[140px]">
+        <div className="flex justify-between items-start mb-4">
+          <div className="h-4 w-24 bg-secondary rounded" />
+          <div className="h-9 w-9 bg-secondary rounded-lg" />
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="h-8 w-16 bg-secondary rounded" />
+          <div className="h-4 w-12 bg-secondary rounded" />
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className="group relative bg-card border border-border rounded-xl p-5 hover:border-accent/50 transition-all duration-300 overflow-hidden animate-in fade-in slide-in-from-bottom-4"

@@ -11,23 +11,31 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const data = [
-  { month: "Jan", revenue: 186000, target: 180000 },
-  { month: "Feb", revenue: 205000, target: 190000 },
-  { month: "Mar", revenue: 237000, target: 200000 },
-  { month: "Apr", revenue: 273000, target: 220000 },
-  { month: "May", revenue: 209000, target: 230000 },
-  { month: "Jun", revenue: 314000, target: 250000 },
-  { month: "Jul", revenue: 352000, target: 270000 },
-  { month: "Aug", revenue: 389000, target: 290000 },
-  { month: "Sep", revenue: 421000, target: 310000 },
-  { month: "Oct", revenue: 458000, target: 330000 },
-  { month: "Nov", revenue: 492000, target: 350000 },
-  { month: "Dec", revenue: 547000, target: 380000 },
-];
+import { ForecastSummary } from "@/lib/types";
 
-export function RevenueChart() {
+interface RevenueChartProps {
+  data: ForecastSummary | null;
+}
+
+export function RevenueChart({ data: forecastData }: RevenueChartProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const currentMonthIdx = new Date().getMonth();
+
+  // Create real chart data from backend
+  const chartData = forecastData ? [
+    ...forecastData.monthly_actuals.map((val, i) => ({
+      month: months[(currentMonthIdx - 3 + i + 12) % 12],
+      revenue: val,
+      target: val * 0.95 // Synthetic target for visualization
+    })),
+    ...forecastData.monthly_forecast.map((val, i) => ({
+      month: months[(currentMonthIdx + 1 + i) % 12],
+      revenue: val,
+      target: val * 1.1 // Synthetic target for visualization
+    }))
+  ] : [];
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 300);
@@ -55,7 +63,7 @@ export function RevenueChart() {
 
       <div className={`h-[280px] transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0.4} />

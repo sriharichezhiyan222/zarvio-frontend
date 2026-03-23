@@ -212,6 +212,36 @@ export interface PipelineStage {
   currency: string;
 }
 
+export interface OverviewStats {
+  new_leads: {
+    value: string;
+    change: string;
+    type: "positive" | "negative" | "neutral";
+  };
+  active_deals: {
+    value: string;
+    change: string;
+    type: "positive" | "negative" | "neutral";
+  };
+  conversion_rate: {
+    value: string;
+    change: string;
+    type: "positive" | "negative" | "neutral";
+  };
+  recent_deals: any[];
+}
+
+export interface ForecastSummary {
+  quarterly_revenue: string;
+  breakdown: {
+    committed: number;
+    best_case: number;
+    pipeline: number;
+  };
+  monthly_actuals: number[];
+  monthly_forecast: number[];
+}
+
 // Report Types
 export interface ReportMetric {
   label: string;

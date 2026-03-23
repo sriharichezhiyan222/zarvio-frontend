@@ -1,62 +1,119 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { RevenueChart } from "@/components/dashboard/charts/revenue-chart";
 import { PipelineOverview } from "@/components/dashboard/charts/pipeline-overview";
 import { RecentDeals } from "@/components/dashboard/recent-deals";
 import { TopPerformers } from "@/components/dashboard/top-performers";
-import { DollarSign, TrendingUp, Users, Target } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Target, LayoutDashboard } from "lucide-react";
+import { dealApi, forecastApi } from "@/lib/api";
+import type { OverviewStats, ForecastSummary } from "@/lib/types";
 
 export function OverviewSection() {
+  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [forecast, setForecast] = useState<ForecastSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        const [statsRes, forecastRes] = await Promise.all([
+          dealApi.getStats(),
+          forecastApi.getSummary()
+        ]);
+
+        if (statsRes.success && statsRes.data) {
+          setStats(statsRes.data);
+        }
+        if (forecastRes.success && forecastRes.data) {
+          setForecast(forecastRes.data);
+        }
+      } catch (error) {
+        console.error("Error fetching overview data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  const formatCurrency = (val: number | undefined) => {
+    if (val === undefined || val === 0) return "$0";
+    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `$${(val / 1000).toFixed(1)}K`;
+    return `$${val}`;
+  };
+
+  const hasData = stats && (parseInt(stats.new_leads.value) > 0 || parseInt(stats.active_deals.value) > 0);
+
   return (
     <div className="space-y-6">
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Revenue"
-          value="$2.4M"
-          change="+12.5%"
-          changeType="positive"
+          value={formatCurrency(forecast?.breakdown.committed)}
+          change="+0%"
+          changeType="neutral"
           icon={DollarSign}
           delay={0}
+          isLoading={isLoading}
         />
         <MetricCard
           title="Conversion Rate"
-          value="24.8%"
-          change="+3.2%"
-          changeType="positive"
+          value={stats?.conversion_rate.value || "0%"}
+          change={stats?.conversion_rate.change || "0%"}
+          changeType={stats?.conversion_rate.type || "neutral"}
           icon={TrendingUp}
           delay={1}
+          isLoading={isLoading}
         />
         <MetricCard
           title="Active Deals"
-          value="147"
-          change="-5"
-          changeType="negative"
+          value={stats?.active_deals.value || "0"}
+          change={stats?.active_deals.change || "0"}
+          changeType={stats?.active_deals.type || "neutral"}
           icon={Target}
           delay={2}
+          isLoading={isLoading}
         />
         <MetricCard
           title="New Leads"
-          value="892"
-          change="+18.3%"
-          changeType="positive"
+          value={stats?.new_leads.value || "0"}
+          change={stats?.new_leads.change || "0%"}
+          changeType={stats?.new_leads.type || "neutral"}
           icon={Users}
           delay={3}
+          isLoading={isLoading}
         />
       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RevenueChart />
+          {hasData ? (
+             <RevenueChart data={forecast} />
+          ) : (
+            <div className="bg-card border border-border border-dashed rounded-xl p-8 h-[380px] flex flex-col items-center justify-center text-center">
+              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
+                <LayoutDashboard className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">No revenue data yet</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Add your first lead to get started with revenue forecasting
+              </p>
+            </div>
+          )}
         </div>
-        <PipelineOverview />
+        <PipelineOverview data={stats} />
       </div>
 
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentDeals />
+        <RecentDeals deals={stats?.recent_deals || []} isLoading={isLoading} />
         <TopPerformers />
       </div>
     </div>

@@ -3,43 +3,10 @@
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, Clock, CheckCircle2, XCircle } from "lucide-react";
 
-const deals = [
-  {
-    company: "Acme Corp",
-    value: "$125,000",
-    status: "won",
-    date: "2 hours ago",
-    rep: "Sarah Chen",
-  },
-  {
-    company: "TechStart Inc",
-    value: "$89,500",
-    status: "pending",
-    date: "5 hours ago",
-    rep: "Mike Johnson",
-  },
-  {
-    company: "GlobalFin",
-    value: "$245,000",
-    status: "pending",
-    date: "1 day ago",
-    rep: "Emily Davis",
-  },
-  {
-    company: "DataSync Solutions",
-    value: "$67,800",
-    status: "lost",
-    date: "2 days ago",
-    rep: "James Wilson",
-  },
-  {
-    company: "CloudBase Ltd",
-    value: "$178,000",
-    status: "won",
-    date: "3 days ago",
-    rep: "Sarah Chen",
-  },
-];
+interface RecentDealsProps {
+  deals: any[];
+  isLoading: boolean;
+}
 
 const statusConfig = {
   won: {
@@ -62,7 +29,43 @@ const statusConfig = {
   },
 };
 
-export function RecentDeals() {
+export function RecentDeals({ deals, isLoading }: RecentDealsProps) {
+  if (isLoading) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-5 animate-pulse h-[400px]">
+        <div className="h-6 w-32 bg-secondary rounded mb-6" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex justify-between items-center">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary" />
+                <div className="space-y-2">
+                  <div className="h-4 w-24 bg-secondary rounded" />
+                  <div className="h-3 w-32 bg-secondary rounded" />
+                </div>
+              </div>
+              <div className="h-4 w-16 bg-secondary rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (deals.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-5 flex flex-col items-center justify-center text-center h-[400px] animate-in fade-in">
+        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
+          <Clock className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-semibold text-foreground">No deals yet</h3>
+        <p className="text-sm text-muted-foreground mt-1 max-w-[200px]">
+          Convert your first lead to start tracking deals
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-card border border-border rounded-xl p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
       <div className="flex items-center justify-between mb-5">
@@ -78,27 +81,31 @@ export function RecentDeals() {
 
       <div className="space-y-3">
         {deals.map((deal, index) => {
-          const status = statusConfig[deal.status as keyof typeof statusConfig];
+          // Map backend category to status
+          const statusKey = deal.category === 'high' ? 'won' : 'pending';
+          const status = statusConfig[statusKey as keyof typeof statusConfig];
           const StatusIcon = status.icon;
+          const companyName = deal.leads?.company || "Unknown Company";
+          const repName = deal.leads?.name || "AI Agent";
 
           return (
             <div
-              key={deal.company}
+              key={deal.id || index}
               className="group flex items-center justify-between p-3 rounded-lg hover:bg-secondary/50 transition-all duration-200 cursor-pointer animate-in fade-in slide-in-from-left-2"
               style={{ animationDelay: `${(index + 3) * 100}ms`, animationFillMode: "both" }}
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-sm font-semibold text-muted-foreground group-hover:bg-accent/10 group-hover:text-accent transition-all duration-200">
-                  {deal.company.charAt(0)}
+                  {companyName.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{deal.company}</p>
-                  <p className="text-xs text-muted-foreground">{deal.rep} • {deal.date}</p>
+                  <p className="text-sm font-medium text-foreground">{companyName}</p>
+                  <p className="text-xs text-muted-foreground">{repName} • Just now</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-foreground">{deal.value}</span>
+                <span className="text-sm font-semibold text-foreground">Score: {deal.score}</span>
                 <div className={cn("flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium", status.bg, status.color)}>
                   <StatusIcon className="w-3 h-3" />
                   {status.label}

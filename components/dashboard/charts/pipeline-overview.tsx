@@ -2,20 +2,52 @@
 
 import { useState, useEffect } from "react";
 
-const stages = [
-  { name: "Lead", value: 45, count: 892, color: "bg-chart-1" },
-  { name: "Qualified", value: 28, count: 556, color: "bg-chart-2" },
-  { name: "Proposal", value: 18, count: 357, color: "bg-chart-3" },
-  { name: "Negotiation", value: 9, count: 179, color: "bg-accent" },
-];
+import { OverviewStats } from "@/lib/types";
+import { Target } from "lucide-react";
 
-export function PipelineOverview() {
+interface PipelineOverviewProps {
+  data: OverviewStats | null;
+}
+
+export function PipelineOverview({ data: stats }: PipelineOverviewProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 400);
     return () => clearTimeout(timer);
   }, []);
+
+  const totalLeads = stats ? parseInt(stats.new_leads.value) : 0;
+  const totalDeals = stats ? parseInt(stats.active_deals.value) : 0;
+  
+  const stages = [
+    { 
+      name: "Leads", 
+      value: totalLeads > 0 ? 100 : 0, 
+      count: totalLeads, 
+      color: "bg-chart-1" 
+    },
+    { 
+      name: "Active Deals", 
+      value: totalLeads > 0 ? Math.round((totalDeals / totalLeads) * 100) : 0, 
+      count: totalDeals, 
+      color: "bg-accent" 
+    },
+  ];
+
+  if (totalLeads === 0) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-5 h-[380px] flex flex-col items-center justify-center text-center">
+        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
+          <Target className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-semibold text-foreground">Pipeline is empty</h3>
+        <p className="text-sm text-muted-foreground mt-1 max-w-[200px]">
+          Start adding leads to see your pipeline distribution
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 h-[380px] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
@@ -50,8 +82,8 @@ export function PipelineOverview() {
       {/* Total pipeline value */}
       <div className="mt-6 pt-5 border-t border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Total Pipeline Value</span>
-          <span className="text-xl font-bold text-foreground">$4.8M</span>
+          <span className="text-sm text-muted-foreground">Active Conversion Rate</span>
+          <span className="text-xl font-bold text-foreground">{stats?.conversion_rate.value || "0%"}</span>
         </div>
       </div>
     </div>
