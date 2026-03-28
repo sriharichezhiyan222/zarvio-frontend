@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, Suspense } from "react";
+import { useRef, useMemo, Suspense, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Sphere, MeshDistortMaterial, Stars, Environment, MeshTransmissionMaterial } from "@react-three/drei";
 import * as THREE from "three";
@@ -396,12 +396,27 @@ function Scene() {
 }
 
 export function Hero3DScene() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!mounted) {
+    return <div className="absolute inset-0 -z-10 bg-background" />;
+  }
+
   return (
     <div className="absolute inset-0 -z-10">
       <Canvas
         camera={{ position: [0, 0, 8], fov: 50 }}
         dpr={[1, 2]}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ 
+          antialias: true, 
+          alpha: true,
+          powerPreference: "high-performance",
+        }}
       >
         <Suspense fallback={null}>
           <Scene />

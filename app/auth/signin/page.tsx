@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -49,11 +50,23 @@ export default function SignInPage() {
     }
   };
 
-  const handleOAuthSignIn = async (provider: string) => {
+  const handleOAuthSignIn = async (provider: "google" | "apple") => {
     setIsLoading(true);
-    // Simulate OAuth redirect
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push("/dashboard");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) {
+        console.error(`${provider} sign in failed:`, error.message);
+      }
+    } catch (err) {
+      console.error(`Unexpected error during ${provider} sign in:`, err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
