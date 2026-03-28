@@ -7,7 +7,7 @@ import { PipelineOverview } from "@/components/dashboard/charts/pipeline-overvie
 import { RecentDeals } from "@/components/dashboard/recent-deals";
 import { TopPerformers } from "@/components/dashboard/top-performers";
 import { DollarSign, TrendingUp, Users, Target, LayoutDashboard } from "lucide-react";
-import { dealApi, forecastApi } from "@/lib/api";
+import { apiJson } from "@/lib/client-api";
 import type { OverviewStats, ForecastSummary } from "@/lib/types";
 
 export function OverviewSection() {
@@ -19,17 +19,24 @@ export function OverviewSection() {
     async function fetchData() {
       setIsLoading(true);
       try {
-        const [statsRes, forecastRes] = await Promise.all([
-          dealApi.getStats(),
-          forecastApi.getSummary()
+        const [forecastData, prospects, leads] = await Promise.all([
+          apiJson<any>("/api/forecast"),
+          apiJson<any[]>("/prospects"),
+          apiJson<any[]>("/leads"),
         ]);
-
-        if (statsRes.success && statsRes.data) {
-          setStats(statsRes.data);
-        }
-        if (forecastRes.success && forecastRes.data) {
-          setForecast(forecastRes.data);
-        }
+        setForecast(forecastData);
+        const dealsCount = Array.isArray(prospects) ? prospects.length : 0;
+        const leadsCount = Array.isArray(leads) ? leads.length : 0;
+        setStats({
+          new_leads: { value: String(leadsCount), change: "0%", type: "neutral" },
+          active_deals: { value: String(dealsCount), change: "0%", type: "neutral" },
+          conversion_rate: {
+            value: leadsCount > 0 ? `${Math.round((dealsCount / leadsCount) * 100)}%` : "0%",
+            change: "0%",
+            type: "neutral",
+          },
+          recent_deals: (Array.isArray(prospects) ? prospects : []).slice(0, 5),
+        });
       } catch (error) {
         console.error("Error fetching overview data:", error);
       } finally {

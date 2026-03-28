@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { apiJson } from "@/lib/client-api";
 import { Trophy, Target, TrendingUp, TrendingDown, Mail, Phone, MoreHorizontal } from "lucide-react";
 import {
   BarChart,
@@ -25,22 +26,6 @@ interface TeamMember {
   change: number;
   rank: number;
 }
-
-const teamMembers: TeamMember[] = [
-  { id: "1", name: "Sarah Chen", role: "Senior AE", email: "sarah@company.com", avatar: "SC", deals: 24, revenue: 487500, quota: 450000, change: 15, rank: 1 },
-  { id: "2", name: "Mike Johnson", role: "Account Executive", email: "mike@company.com", avatar: "MJ", deals: 19, revenue: 356200, quota: 400000, change: 8, rank: 2 },
-  { id: "3", name: "Emily Davis", role: "Senior AE", email: "emily@company.com", avatar: "ED", deals: 17, revenue: 312800, quota: 350000, change: 12, rank: 3 },
-  { id: "4", name: "James Wilson", role: "Account Executive", email: "james@company.com", avatar: "JW", deals: 15, revenue: 289400, quota: 350000, change: -5, rank: 4 },
-  { id: "5", name: "Lisa Park", role: "Account Executive", email: "lisa@company.com", avatar: "LP", deals: 14, revenue: 267100, quota: 300000, change: 9, rank: 5 },
-];
-
-const performanceData = [
-  { name: "Sarah", revenue: 487, quota: 450 },
-  { name: "Mike", revenue: 356, quota: 400 },
-  { name: "Emily", revenue: 312, quota: 350 },
-  { name: "James", revenue: 289, quota: 350 },
-  { name: "Lisa", revenue: 267, quota: 300 },
-];
 
 function TeamMemberCard({ member, index }: { member: TeamMember; index: number }) {
   const quotaPercentage = (member.revenue / member.quota) * 100;
@@ -122,19 +107,70 @@ function TeamMemberCard({ member, index }: { member: TeamMember; index: number }
 
 export function TeamSection() {
   const [chartLoaded, setChartLoaded] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setChartLoaded(true), 400);
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const loadMe = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const me = await apiJson<any>("/auth/me");
+        const name = me.name || me.full_name || me.email || "You";
+        const avatar = name
+          .split(" ")
+          .map((p: string) => p[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+        setTeamMembers([
+          {
+            id: String(me.id || "me"),
+            name,
+            role: me.role || "User",
+            email: me.email || "-",
+            avatar,
+            deals: Number(me.deals || 0),
+            revenue: Number(me.revenue || 0),
+            quota: Number(me.quota || 0),
+            change: Number(me.change || 0),
+            rank: 1,
+          },
+        ]);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load user");
+        setTeamMembers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadMe();
+  }, []);
+
+  const performanceData = teamMembers.map((m) => ({
+    name: m.name.split(" ")[0],
+    revenue: Math.round(m.revenue / 1000),
+    quota: Math.round(m.quota / 1000),
+  }));
+
   const totalRevenue = teamMembers.reduce((acc, m) => acc + m.revenue, 0);
   const totalDeals = teamMembers.reduce((acc, m) => acc + m.deals, 0);
-  const avgQuotaAttainment = teamMembers.reduce((acc, m) => acc + (m.revenue / m.quota) * 100, 0) / teamMembers.length;
+  const avgQuotaAttainment = teamMembers.length
+    ? teamMembers.reduce((acc, m) => acc + (m.quota > 0 ? (m.revenue / m.quota) * 100 : 0), 0) /
+      teamMembers.length
+    : 0;
 
   return (
     <div className="space-y-6">
       {/* Header stats */}
+      {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">Failed to load team data: {error}</div>}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-xl p-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center gap-3 mb-2">
@@ -223,9 +259,17 @@ export function TeamSection() {
       <div>
         <h3 className="text-base font-semibold text-foreground mb-4">Team Members</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoading && (
+            <div className="h-28 animate-pulse rounded-xl bg-secondary md:col-span-2 lg:col-span-3" />
+          )}
           {teamMembers.map((member, index) => (
             <TeamMemberCard key={member.id} member={member} index={index} />
           ))}
+          {!isLoading && teamMembers.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground md:col-span-2 lg:col-span-3">
+              No team data yet.
+            </div>
+          )}
         </div>
       </div>
     </div>

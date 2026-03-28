@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { apiJson } from "@/lib/client-api";
 import {
   Search,
   Filter,
@@ -17,24 +18,13 @@ interface Deal {
   id: string;
   company: string;
   contact: string;
-  email: string;
+  email?: string;
   value: number;
   stage: string;
   status: "won" | "pending" | "lost";
-  closeDate: string;
-  rep: string;
+  closeDate?: string;
+  rep?: string;
 }
-
-const deals: Deal[] = [
-  { id: "1", company: "Acme Corporation", contact: "John Smith", email: "john@acme.com", value: 125000, stage: "Negotiation", status: "won", closeDate: "2024-01-15", rep: "Sarah Chen" },
-  { id: "2", company: "TechStart Inc", contact: "Lisa Wong", email: "lisa@techstart.io", value: 89500, stage: "Proposal", status: "pending", closeDate: "2024-01-22", rep: "Mike Johnson" },
-  { id: "3", company: "GlobalFin Partners", contact: "Robert Davis", email: "rdavis@globalfin.com", value: 245000, stage: "Qualified", status: "pending", closeDate: "2024-02-01", rep: "Emily Davis" },
-  { id: "4", company: "DataSync Solutions", contact: "Emma Wilson", email: "emma@datasync.net", value: 67800, stage: "Lead", status: "lost", closeDate: "2024-01-10", rep: "James Wilson" },
-  { id: "5", company: "CloudBase Ltd", contact: "Michael Chen", email: "m.chen@cloudbase.io", value: 178000, stage: "Negotiation", status: "won", closeDate: "2024-01-18", rep: "Sarah Chen" },
-  { id: "6", company: "Innovate Labs", contact: "Jennifer Park", email: "jpark@innovate.co", value: 156000, stage: "Proposal", status: "pending", closeDate: "2024-01-28", rep: "Lisa Park" },
-  { id: "7", company: "NextGen Systems", contact: "David Lee", email: "david@nextgen.tech", value: 203000, stage: "Qualified", status: "pending", closeDate: "2024-02-05", rep: "Mike Johnson" },
-  { id: "8", company: "Prime Analytics", contact: "Sarah Johnson", email: "sj@primeanalytics.com", value: 94500, stage: "Lead", status: "pending", closeDate: "2024-02-10", rep: "Emily Davis" },
-];
 
 const statusConfig = {
   won: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10", label: "Won" },
@@ -45,14 +35,57 @@ const statusConfig = {
 export function DealsSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredDeals = deals.filter((deal) => {
-    const matchesSearch =
-      deal.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      deal.contact.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === "all" || deal.status === selectedFilter;
-    return matchesSearch && matchesFilter;
-  });
+  useEffect(() => {
+    const loadDeals = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await apiJson<any[]>("/prospects");
+        const normalized: Deal[] = (Array.isArray(data) ? data : []).map((deal, idx) => {
+          const stageRaw = String(deal.stage || deal.status || "pending").toLowerCase();
+          const status: Deal["status"] = stageRaw.includes("won")
+            ? "won"
+            : stageRaw.includes("lost")
+            ? "lost"
+            : "pending";
+          return {
+            id: String(deal.id ?? idx),
+            company: deal.company || deal.company_name || "Unknown company",
+            contact: deal.contact || deal.name || "Unknown contact",
+            email: deal.email || "",
+            value: Number(deal.value || deal.amount || 0),
+            stage: deal.stage || "Unknown",
+            status,
+            closeDate: deal.close_date || deal.expected_close_date || "",
+            rep: deal.owner_name || deal.assigned_to || "",
+          };
+        });
+        setDeals(normalized);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load deals");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDeals();
+  }, []);
+
+  const filteredDeals = useMemo(
+    () =>
+      deals.filter((deal) => {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch =
+          deal.company.toLowerCase().includes(q) || deal.contact.toLowerCase().includes(q);
+        const matchesFilter = selectedFilter === "all" || deal.status === selectedFilter;
+        return matchesSearch && matchesFilter;
+      }),
+    [deals, searchQuery, selectedFilter]
+  );
 
   return (
     <div className="space-y-6">
@@ -98,6 +131,12 @@ export function DealsSection() {
         </button>
       </div>
 
+      {error && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Failed to load deals: {error}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="overflow-x-auto">
@@ -125,6 +164,14 @@ export function DealsSection() {
               </tr>
             </thead>
             <tbody>
+              {isLoading &&
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`skeleton-${index}`} className="border-b border-border">
+                    <td className="py-4 px-4" colSpan={8}>
+                      <div className="h-4 w-full animate-pulse rounded bg-secondary" />
+                    </td>
+                  </tr>
+                ))}
               {filteredDeals.map((deal, index) => {
                 const status = statusConfig[deal.status];
                 const StatusIcon = status.icon;
@@ -146,7 +193,7 @@ export function DealsSection() {
                     <td className="py-4 px-4">
                       <div>
                         <p className="text-sm text-foreground">{deal.contact}</p>
-                        <p className="text-xs text-muted-foreground">{deal.email}</p>
+                        <p className="text-xs text-muted-foreground">{deal.email || "-"}</p>
                       </div>
                     </td>
                     <td className="py-4 px-4">
@@ -166,10 +213,10 @@ export function DealsSection() {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="text-sm text-muted-foreground">{deal.rep}</span>
+                      <span className="text-sm text-muted-foreground">{deal.rep || "-"}</span>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="text-sm text-muted-foreground">{deal.closeDate}</span>
+                      <span className="text-sm text-muted-foreground">{deal.closeDate || "-"}</span>
                     </td>
                     <td className="py-4 px-4">
                       <button className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200">
@@ -179,6 +226,13 @@ export function DealsSection() {
                   </tr>
                 );
               })}
+              {!isLoading && filteredDeals.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
+                    Add your first lead to get started.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
