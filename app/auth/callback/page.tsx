@@ -9,7 +9,9 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Supabase automatically handles the code/fragment exchange here
+      // Small delay to handle potential clock skew
+      await new Promise(r => setTimeout(r, 500));
+      
       const { data, error } = await supabase.auth.getSession();
       
       if (error) {
