@@ -9,23 +9,46 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Increased delay to handle larger clock skew
+      // 2-second delay to settle clock skew
       await new Promise(r => setTimeout(r, 2000));
       
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Auth callback error:", error.message);
-        router.push("/auth/signin?error=" + encodeURIComponent(error.message));
-      } else if (data?.session) {
-        // Success! Securely route to dashboard
-        router.push("/dashboard");
+      const hash = window.location.hash;
+      if (!hash) {
+          // Check for error in query params
+          const query = new URLSearchParams(window.location.search);
+          const errorMsg = query.get("error_description") || query.get("error");
+          if (errorMsg) {
+              console.error("Auth callback query error:", errorMsg);
+              router.push("/auth/signin?error=" + encodeURIComponent(errorMsg));
+              return;
+          }
+      }
+
+      const params = new URLSearchParams(hash.substring(1));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        const { data, error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (error) {
+          console.error("Auth callback session error:", error.message);
+          router.push("/auth/signin?error=" + encodeURIComponent(error.message));
+        } else if (data?.session) {
+          router.push("/dashboard");
+        }
       } else {
-        // No session found yet, maybe it's still processing or was cancelled
-        // Fallback to signin if we've waited too long
-        console.warn("No session found in callback");
-        const timer = setTimeout(() => router.push("/auth/signin"), 3000);
-        return () => clearTimeout(timer);
+        // Try getSession in case it recovered or was handled otherwise
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) {
+          router.push("/dashboard");
+        } else {
+          console.warn("No token found in callback URL");
+          router.push("/auth/signin");
+        }
       }
     };
 
