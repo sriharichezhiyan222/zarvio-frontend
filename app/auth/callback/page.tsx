@@ -9,8 +9,8 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Small delay to handle potential clock skew
-      await new Promise(r => setTimeout(r, 500));
+      // Increased delay to handle larger clock skew
+      await new Promise(r => setTimeout(r, 2000));
       
       const { data, error } = await supabase.auth.getSession();
       
