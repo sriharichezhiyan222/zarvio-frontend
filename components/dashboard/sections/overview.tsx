@@ -10,7 +10,11 @@ import { DollarSign, TrendingUp, Users, Target, LayoutDashboard } from "lucide-r
 import { apiJson } from "@/lib/client-api";
 import type { OverviewStats, ForecastSummary } from "@/lib/types";
 
-export function OverviewSection() {
+interface OverviewSectionProps {
+  onOpenDealRoom?: (leadId: string) => void;
+}
+
+export function OverviewSection({ onOpenDealRoom }: OverviewSectionProps) {
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [forecast, setForecast] = useState<ForecastSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,24 +23,40 @@ export function OverviewSection() {
     async function fetchData() {
       setIsLoading(true);
       try {
-        const [forecastData, prospects, leads] = await Promise.all([
-          apiJson<any>("/api/forecast"),
-          apiJson<any[]>("/prospects"),
-          apiJson<any[]>("/leads"),
+        // Use the optimized stats endpoint that aggregates everything server-side
+        const [statsData, forecastData] = await Promise.all([
+          apiJson<any>("/api/stats/overview").catch(() => null),
+          apiJson<any>("/api/forecast").catch(() => null),
         ]);
+        
         setForecast(forecastData);
-        const dealsCount = Array.isArray(prospects) ? prospects.length : 0;
-        const leadsCount = Array.isArray(leads) ? leads.length : 0;
-        setStats({
-          new_leads: { value: String(leadsCount), change: "0%", type: "neutral" },
-          active_deals: { value: String(dealsCount), change: "0%", type: "neutral" },
-          conversion_rate: {
-            value: leadsCount > 0 ? `${Math.round((dealsCount / leadsCount) * 100)}%` : "0%",
-            change: "0%",
-            type: "neutral",
-          },
-          recent_deals: (Array.isArray(prospects) ? prospects : []).slice(0, 5),
-        });
+        
+        if (statsData) {
+          setStats({
+            new_leads: statsData.new_leads || { value: "0", change: "0%", type: "neutral" },
+            active_deals: statsData.active_deals || { value: "0", change: "0", type: "neutral" },
+            conversion_rate: statsData.conversion_rate || { value: "0%", change: "0%", type: "neutral" },
+            recent_deals: statsData.recent_deals || [],
+          });
+        } else {
+          // Fallback: fetch separately
+          const [prospects, leads] = await Promise.all([
+            apiJson<any[]>("/prospects").catch(() => []),
+            apiJson<any[]>("/leads").catch(() => []),
+          ]);
+          const dealsCount = Array.isArray(prospects) ? prospects.length : 0;
+          const leadsCount = Array.isArray(leads) ? leads.length : 0;
+          setStats({
+            new_leads: { value: String(leadsCount), change: "0%", type: "neutral" },
+            active_deals: { value: String(dealsCount), change: "0%", type: "neutral" },
+            conversion_rate: {
+              value: leadsCount > 0 ? `${Math.round((dealsCount / leadsCount) * 100)}%` : "0%",
+              change: "0%",
+              type: "neutral",
+            },
+            recent_deals: (Array.isArray(prospects) ? prospects : []).slice(0, 5),
+          });
+        }
       } catch (error) {
         console.error("Error fetching overview data:", error);
       } finally {

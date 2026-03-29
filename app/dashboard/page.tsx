@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [outreachTab, setOutreachTab] = useState<OutreachTab>("emails");
   const [showRAS, setShowRAS] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>(undefined);
 
   // Show RAS sidebar when on deal-room or ras section
   const isRASVisible = activeSection === "deal-room" || activeSection === "ras" || showRAS;
@@ -41,16 +42,22 @@ export default function Dashboard() {
     }
   };
 
+  // Navigate to deal-room with a specific lead
+  const handleOpenDealRoom = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    handleSectionChange("deal-room");
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case "overview":
-        return <OverviewSection />;
+        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
       case "campaign":
-        return <CampaignSection />;
+        return <CampaignSection onOpenDealRoom={handleOpenDealRoom} />;
       case "deals":
-        return <DealsSection />;
+        return <DealsSection onOpenDealRoom={handleOpenDealRoom} />;
       case "deal-room":
-        return <DealRoomSection />;
+        return <DealRoomSection leadId={selectedLeadId} key={selectedLeadId} />;
       case "customers":
         return <CustomersSection />;
       case "team":
@@ -64,11 +71,11 @@ export default function Dashboard() {
       case "outreach":
         return <OutreachSection activeTab={outreachTab} onTabChange={setOutreachTab} />;
       case "lead-explorer":
-        return <LeadExplorerSection />;
+        return <LeadExplorerSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
       case "coming-soon":
         return <ComingSoonSection />;
       default:
-        return <OverviewSection />;
+        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
     }
   };
 
@@ -90,7 +97,7 @@ export default function Dashboard() {
         <Header activeSection={activeSection} />
         <main className="flex-1 p-6 overflow-auto">
           <div
-            key={activeSection}
+            key={activeSection + (selectedLeadId || "")}
             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
             {renderSection()}
@@ -101,7 +108,6 @@ export default function Dashboard() {
         <RASSidebar
           onExecute={(action) => {
             console.log("[v0] RAS Execute:", action);
-            // TODO: Connect to API - rasApi.executeRecommendation(leadId, action)
           }}
         />
       )}

@@ -20,9 +20,12 @@ import {
   MessageSquare,
   Settings,
   History,
+  DoorOpen,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiJson, apiStream, getAuthContext } from "@/lib/client-api";
+import type { Section } from "@/lib/types";
 
 interface QuickAction {
   id: string;
@@ -64,7 +67,12 @@ const sidebarItems = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-export function LeadExplorerSection() {
+interface LeadExplorerSectionProps {
+  onOpenDealRoom?: (leadId: string) => void;
+  onNavigateTo?: (section: Section) => void;
+}
+
+export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplorerSectionProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -137,24 +145,12 @@ export function LeadExplorerSection() {
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === aiMessageId
-              ? { ...msg, content: "Generating a full campaign for Lead 1..." }
+              ? { ...msg, content: "Opening Campaign section with your pipeline leads..." }
               : msg
           )
         );
-        const firstLeadId = messages.flatMap((m) => m.leads || [])[0]?.id;
-        const outreachData = await apiJson<any>(`/outreach/generate/${firstLeadId || 1}`, {
-          method: "POST",
-        });
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessageId
-              ? { 
-                  ...msg, 
-                  content: "Campaign generated successfully! \n" + JSON.stringify(outreachData, null, 2)
-                }
-              : msg
-          )
-        );
+        // Navigate to campaign section
+        setTimeout(() => onNavigateTo?.("campaign"), 800);
       } else {
         const { userId } = getAuthContext();
         
@@ -401,6 +397,28 @@ export function LeadExplorerSection() {
                                 </span>
                               ))}
                             </div>
+                            {(lead.id || lead.lead_id) && (
+                              <div className="flex gap-2 mt-2">
+                                {onOpenDealRoom && (
+                                  <button
+                                    onClick={() => onOpenDealRoom(String(lead.id || lead.lead_id))}
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary text-[11px] hover:bg-primary/20 transition-colors"
+                                  >
+                                    <DoorOpen className="w-3 h-3" />
+                                    Deal Room
+                                  </button>
+                                )}
+                                {onNavigateTo && (
+                                  <button
+                                    onClick={() => onNavigateTo("campaign")}
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-muted-foreground text-[11px] hover:bg-secondary/80 transition-colors"
+                                  >
+                                    <Sparkles className="w-3 h-3" />
+                                    Campaign
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

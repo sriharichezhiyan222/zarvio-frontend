@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { OutreachTab } from "@/app/page";
+import type { OutreachTab } from "@/lib/types";
 import { apiJson } from "@/lib/client-api";
 import {
   Mail,

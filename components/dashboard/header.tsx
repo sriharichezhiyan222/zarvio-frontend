@@ -27,6 +27,7 @@ const sectionTitles: Record<Section, string> = {
   "lead-radar": "Lead Radar",
   "ghost-closer": "Ghost Closer",
   "lead-marketplace": "Lead Marketplace",
+  ras: "RAS",
 };
 
 export function Header({ activeSection }: HeaderProps) {

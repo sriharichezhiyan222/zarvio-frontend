@@ -32,7 +32,7 @@ const statusConfig = {
   lost: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Lost" },
 };
 
-export function DealsSection() {
+export function DealsSection({ onOpenDealRoom }: { onOpenDealRoom?: (leadId: string) => void }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -44,21 +44,25 @@ export function DealsSection() {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await apiJson<any[]>("/prospects");
-        const normalized: Deal[] = (Array.isArray(data) ? data : []).map((deal, idx) => {
-          const stageRaw = String(deal.stage || deal.status || "pending").toLowerCase();
-          const status: Deal["status"] = stageRaw.includes("won")
+        // Load from prospects endpoint (now returns flat array after our fix)
+        const raw = await apiJson<any>("/prospects");
+        // Handle both flat array and wrapped {prospects: [...]} format
+        const data: any[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.prospects) ? raw.prospects : []);
+        
+        const normalized: Deal[] = data.map((deal, idx) => {
+          const stageRaw = String(deal.stage || deal.status || deal.category || "pending").toLowerCase();
+          const status: Deal["status"] = stageRaw.includes("won") || stageRaw === "high"
             ? "won"
-            : stageRaw.includes("lost")
+            : stageRaw.includes("lost") || stageRaw === "low"
             ? "lost"
             : "pending";
           return {
-            id: String(deal.id ?? idx),
-            company: deal.company || deal.company_name || "Unknown company",
-            contact: deal.contact || deal.name || "Unknown contact",
-            email: deal.email || "",
-            value: Number(deal.value || deal.amount || 0),
-            stage: deal.stage || "Unknown",
+            id: String(deal.id ?? deal.lead_id ?? idx),
+            company: deal.company || deal.company_name || deal.leads?.company || "Unknown company",
+            contact: deal.contact || deal.name || deal.leads?.first_name || "Unknown contact",
+            email: deal.email || deal.leads?.email || "",
+            value: Number(deal.value || deal.amount || deal.score || 0),
+            stage: deal.category || deal.stage || "Pipeline",
             status,
             closeDate: deal.close_date || deal.expected_close_date || "",
             rep: deal.owner_name || deal.assigned_to || "",
@@ -219,9 +223,19 @@ export function DealsSection() {
                       <span className="text-sm text-muted-foreground">{deal.closeDate || "-"}</span>
                     </td>
                     <td className="py-4 px-4">
-                      <button className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {onOpenDealRoom && (
+                          <button
+                            onClick={() => onOpenDealRoom(deal.id)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
+                          >
+                            Deal Room
+                          </button>
+                        )}
+                        <button className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
