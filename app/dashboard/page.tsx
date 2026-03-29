@@ -14,6 +14,9 @@ import { SettingsSection } from "@/components/dashboard/sections/settings";
 import { OutreachSection } from "@/components/dashboard/sections/outreach";
 import { LeadExplorerSection } from "@/components/dashboard/sections/lead-explorer";
 import { ComingSoonSection } from "@/components/dashboard/sections/coming-soon";
+import { LeadRadarSection } from "@/components/dashboard/sections/lead-radar";
+import { GhostCloserSection } from "@/components/dashboard/sections/ghost-closer";
+import { LeadMarketplaceSection } from "@/components/dashboard/sections/lead-marketplace";
 import { DealRoomSection } from "@/components/dashboard/sections/deal-room";
 import { ZarvioAssistant } from "@/components/dashboard/zarvio-assistant";
 import { RASSidebar } from "@/components/dashboard/ras-sidebar";
@@ -72,6 +75,12 @@ export default function Dashboard() {
         return <OutreachSection activeTab={outreachTab} onTabChange={setOutreachTab} />;
       case "lead-explorer":
         return <LeadExplorerSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
+      case "lead-radar":
+        return <LeadRadarSection />;
+      case "ghost-closer":
+        return <GhostCloserSection />;
+      case "lead-marketplace":
+        return <LeadMarketplaceSection />;
       case "coming-soon":
         return <ComingSoonSection />;
       default:

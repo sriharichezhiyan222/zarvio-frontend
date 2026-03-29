@@ -1,185 +1,131 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import {
-  Radar,
-  Target,
-  Bell,
-  Zap,
-  Globe,
-  TrendingUp,
-  Users,
-  Sparkles,
-  ArrowRight,
-  Check,
-  Mail,
-} from "lucide-react";
+import { useState } from "react";
+import { Radar, Bell, CheckCircle2, TrendingUp, Mail, Target, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-const features = [
-  {
-    icon: Target,
-    title: "Real-Time Lead Detection",
-    description: "Instantly identify when a company matches your ideal customer profile based on intent signals, hiring patterns, and market movements.",
-  },
-  {
-    icon: Bell,
-    title: "Smart Alerts",
-    description: "Get notified the moment a high-value lead enters your target market. Never miss a sales opportunity again.",
-  },
-  {
-    icon: Zap,
-    title: "Automated Enrichment",
-    description: "Automatically enrich lead data with company info, decision-makers, tech stack, and buying signals.",
-  },
-  {
-    icon: Globe,
-    title: "Global Coverage",
-    description: "Monitor leads across 195+ countries with real-time data from millions of company sources.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Predictive Scoring",
-    description: "AI-powered scoring predicts which leads are most likely to convert, helping you prioritize your outreach.",
-  },
-  {
-    icon: Users,
-    title: "Stakeholder Mapping",
-    description: "Automatically identify all relevant decision-makers and influencers within target organizations.",
-  },
-];
-
-const benefits = [
-  "10x faster lead discovery",
-  "95% data accuracy",
-  "Real-time intent signals",
-  "Unlimited lead alerts",
-  "API integrations",
-  "CRM sync",
-];
+import { Button } from "@/components/ui/button";
 
 export function LeadRadarSection() {
+  const [emailSubscribed, setEmailSubscribed] = useState(false);
+  const [email, setEmail] = useState("");
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      setEmailSubscribed(true);
+      setEmail("");
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-card to-chart-2/20 border border-primary/20 p-8 md:p-12">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-chart-2/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in duration-500">
+      {/* Header Area */}
+      <div className="flex flex-col items-center text-center space-y-4 pt-12 pb-8">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-2">
+          <Radar className="w-8 h-8 text-primary animate-pulse" />
+        </div>
+        <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-xs font-semibold">
+          Coming Soon
+        </Badge>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">
+          Lead Radar
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-2xl">
+          Never miss a buying signal. Monitor LinkedIn, news, and job boards 24/7 to catch signals early.
+        </p>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
-        <div className="relative z-10 max-w-2xl">
-          <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">
-            Coming Soon
-          </Badge>
-          
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center">
-              <Radar className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-foreground">Lead Radar</h1>
-              <p className="text-lg text-muted-foreground">Real-time lead intelligence</p>
-            </div>
-          </div>
-
-          <p className="text-lg text-foreground/80 mb-8 leading-relaxed">
-            Lead Radar uses AI-powered signals to detect and alert you to high-intent prospects in real-time. 
-            Stop searching for leads manually - let them come to you.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Mail className="w-4 h-4 mr-2" />
-              Join the Waitlist
-            </Button>
-            <Button variant="outline" className="border-border">
-              Learn More
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Animated Radar Visual */}
-        <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden lg:block">
-          <div className="relative w-64 h-64">
-            <div className="absolute inset-0 rounded-full border border-primary/20" />
-            <div className="absolute inset-8 rounded-full border border-primary/30" />
-            <div className="absolute inset-16 rounded-full border border-primary/40" />
-            <div className="absolute inset-24 rounded-full bg-primary/20 animate-pulse" />
-            <div className="absolute inset-0 origin-center animate-spin" style={{ animationDuration: "8s" }}>
-              <div className="w-1/2 h-0.5 bg-gradient-to-r from-primary to-transparent absolute top-1/2 left-1/2 -translate-y-1/2" />
-            </div>
-            {/* Dots representing leads */}
-            <div className="absolute top-8 right-12 w-3 h-3 bg-emerald-400 rounded-full animate-ping" />
-            <div className="absolute bottom-16 right-8 w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <div className="absolute top-24 left-8 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" style={{ animationDelay: "0.5s" }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Features Grid */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-6">Key Features</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <Card key={index} className="bg-card border-border hover:border-primary/50 transition-colors">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Benefits Section */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            What You Get
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
-                <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                </div>
-                <span className="text-sm font-medium text-foreground">{benefit}</span>
+        {/* Left Column: Visual/Mockup */}
+        <div className="space-y-6">
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader className="border-b border-border bg-secondary/30 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <CardTitle className="text-sm font-medium">Live Signal Feed Preview</CardTitle>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {[
+                  { title: "TechCorp just raised Series B - $12M", detail: "CTO is actively hiring sales tools", badge: "Funding Event", intent: "High" },
+                  { title: "Acme Inc. hired new VP of Sales", detail: "Historically, VP changes trigger new software purchases in 90 days", badge: "Leadership Change", intent: "Critical" },
+                  { title: "Competitor outage detected", detail: "3 prospects complaining on LinkedIn about downtime", badge: "Pain Point", intent: "Medium" }
+                ].map((signal, i) => (
+                  <div key={i} className="p-4 hover:bg-secondary/20 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="text-xs text-primary border-primary/30">
+                        {signal.badge}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Target className="w-3 h-3 text-emerald-400" />
+                        Intent: {signal.intent}
+                      </span>
+                    </div>
+                    <p className="font-medium text-sm text-foreground mb-1">{signal.title}</p>
+                    <p className="text-xs text-muted-foreground">{signal.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* CTA Section */}
-      <Card className="bg-gradient-to-r from-primary/10 to-chart-2/10 border-primary/20">
-        <CardContent className="p-8 text-center">
-          <h3 className="text-2xl font-bold text-foreground mb-3">Be the First to Know</h3>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Join our early access list and get exclusive access to Lead Radar when it launches.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 h-11 px-4 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 h-11">
-              Join Waitlist
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Right Column: Value Prop & Waitlist */}
+        <div className="space-y-6">
+          <Card className="bg-card border-border">
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold">3× earlier than competitors</h3>
+                <p className="text-sm text-muted-foreground">
+                  Get notified the exact moment a prospect enters the buying window. Engage when they are most susceptible to change, before they even start evaluating other vendors.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                <div className="flex flex-col gap-1">
+                  <span className="text-primary font-bold text-2xl">24/7</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Monitoring</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-emerald-400 font-bold text-2xl">LinkedIn</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Integration</span>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-border">
+                <h4 className="text-sm font-semibold mb-3">Join the private beta waitlist</h4>
+                {emailSubscribed ? (
+                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    <span className="text-sm">You're on the list! We'll notify you when Lead Radar drops.</span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubscribe} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      Notify Me
+                    </Button>
+                  </form>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
