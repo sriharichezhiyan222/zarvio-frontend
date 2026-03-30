@@ -260,15 +260,6 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
     updatedAt: (lead as any).updated_at || mockLead.updatedAt,
   } : mockLead;
 
-  if (isDataLoading && !lead && !dealRoom && !ras) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Loading deal room data...</p>
-      </div>
-    );
-  }
-
   // ==========================================
   // Event Handlers (Ready for API Integration)
   // ==========================================
@@ -334,6 +325,16 @@ export function DealRoomSection({ leadId }: DealRoomSectionProps) {
   const handleQuickResponse = useCallback((response: string) => {
     setChatInput(response);
   }, []);
+
+  // Now we can safely perform our early return
+  if (isDataLoading && !lead && !dealRoom && !ras) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading deal room data...</p>
+      </div>
+    );
+  }
 
   // ==========================================
   // Render
