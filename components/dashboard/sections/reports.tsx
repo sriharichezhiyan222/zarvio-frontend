@@ -89,7 +89,9 @@ function ReportCard({
   );
 }
 
-export function ReportsSection() {
+import type { Section } from "@/lib/types";
+
+export function ReportsSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const [chartsLoaded, setChartsLoaded] = useState(false);
 
   useEffect(() => {

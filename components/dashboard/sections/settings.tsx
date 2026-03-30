@@ -118,7 +118,9 @@ const notificationSettings = [
   },
 ];
 
-export function SettingsSection() {
+import type { Section } from "@/lib/types";
+
+export function SettingsSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("profile");
   const [notifications, setNotifications] = useState(notificationSettings);

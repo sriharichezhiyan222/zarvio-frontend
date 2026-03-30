@@ -25,6 +25,7 @@ import {
   Sparkles,
   Mail,
   Globe,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiJson, apiStream, getAuthContext } from "@/lib/client-api";
@@ -65,6 +66,7 @@ interface ChatHistory {
 
 const sidebarItems = [
   { id: "new-chat", label: "New chat", icon: Plus },
+  { id: "import", label: "Import CSV", icon: Upload },
   { id: "memory", label: "Memory", icon: Brain },
   { id: "tasks", label: "Tasks", icon: Clock },
   { id: "settings", label: "Settings", icon: Settings },
@@ -82,6 +84,57 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
   const [activeSidebarItem, setActiveSidebarItem] = useState("new-chat");
   const [chatHistories] = useState<ChatHistory[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsLoading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      type: "user",
+      content: `Importing leads from ${file.name}...`,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    const aiMsgId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: aiMsgId,
+      type: "assistant",
+      content: "Processing CSV and scoring leads...",
+      timestamp: new Date(),
+    }]);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/leads/upload-csv`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMsgId 
+          ? { 
+              ...msg, 
+              content: `Successfully imported ${data.count || data.length || 0} leads from your CSV. They have been scored and added to your pipeline.`,
+              leads: data.results || data.data || [] 
+            }
+          : msg
+      ));
+    } catch (error) {
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMsgId ? { ...msg, content: "Error uploading CSV. Please ensure it's a valid CSV file." } : msg
+      ));
+    } finally {
+      setIsLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) return;
@@ -116,29 +169,37 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === aiMessageId
-              ? { ...msg, content: "Querying Apollo, HubSpot, Snov.io, and Instantly to extract and verify highly qualified leads..." }
+              ? { ...msg, content: "Connecting to Snov.io, Apollo, and HubSpot to find qualified leads..." }
               : msg
           )
         );
         const query = messageContent.replace("/search", "").trim();
-        const searchData = await apiJson<any>("/api/leads/search", {
+        
+        // 1. First try the centralized find-leads endpoint (which uses Snovio)
+        const findLeadsData = await apiJson<any>("/api/find-leads", {
           method: "POST",
-          body: JSON.stringify({ query }),
-        });
-        let leads = searchData.leads || [];
+          body: JSON.stringify({ prompt: query }),
+        }).catch(() => ({ leads: [] }));
+        
+        let leads = findLeadsData.leads || [];
+        
+        // 2. If nothing found, try the search/vector endpoint
         if (leads.length === 0) {
-          const fallback = await apiJson<any>("/api/find-leads", {
+          const searchData = await apiJson<any>("/api/leads/search", {
             method: "POST",
-            body: JSON.stringify({ prompt: query }),
-          });
-          leads = fallback.leads || fallback.results || [];
+            body: JSON.stringify({ query }),
+          }).catch(() => ({ leads: [] }));
+          leads = searchData.leads || [];
         }
+
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === aiMessageId
               ? { 
                   ...msg, 
-                  content: `Found ${leads.length || 0} leads matching your criteria.`,
+                  content: leads.length > 0 
+                    ? `I've found ${leads.length} qualified leads from Snov.io and Apollo matching your criteria.`
+                    : "I couldn't find any new leads matching that specific criteria in our connected databases. Try broadening your search or importing a CSV.",
                   leads
                 }
               : msg
@@ -225,19 +286,36 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
             const isActive = activeSidebarItem === item.id;
             
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveSidebarItem(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              <div key={item.id}>
+                {item.id === "import" && (
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".csv"
+                    className="hidden"
+                  />
                 )}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </button>
+                <button
+                  onClick={() => {
+                    if (item.id === "import") {
+                      fileInputRef.current?.click();
+                    } else {
+                      setActiveSidebarItem(item.id);
+                      if (item.id === "new-chat") setMessages([]);
+                    }
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              </div>
             );
           })}
         </nav>

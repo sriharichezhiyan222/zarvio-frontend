@@ -8,13 +8,15 @@ import { RecentDeals } from "@/components/dashboard/recent-deals";
 import { TopPerformers } from "@/components/dashboard/top-performers";
 import { DollarSign, TrendingUp, Users, Target, LayoutDashboard } from "lucide-react";
 import { apiJson } from "@/lib/client-api";
-import type { OverviewStats, ForecastSummary } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import type { OverviewStats, ForecastSummary, Section } from "@/lib/types";
 
 interface OverviewSectionProps {
   onOpenDealRoom?: (leadId: string) => void;
+  onNavigateTo?: (section: Section) => void;
 }
 
-export function OverviewSection({ onOpenDealRoom }: OverviewSectionProps) {
+export function OverviewSection({ onOpenDealRoom, onNavigateTo }: OverviewSectionProps) {
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [forecast, setForecast] = useState<ForecastSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,9 +131,16 @@ export function OverviewSection({ onOpenDealRoom }: OverviewSectionProps) {
                 <LayoutDashboard className="w-6 h-6 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-1">No revenue data yet</h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
+              <p className="text-sm text-muted-foreground max-w-xs mb-4">
                 Add your first lead to get started with revenue forecasting
               </p>
+              <Button 
+                onClick={() => onNavigateTo?.("lead-explorer")}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Find Your First Lead
+              </Button>
             </div>
           )}
         </div>

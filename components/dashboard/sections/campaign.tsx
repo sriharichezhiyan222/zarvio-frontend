@@ -54,6 +54,7 @@ interface Campaign {
 
 interface CampaignSectionProps {
   onOpenDealRoom?: (leadId: string) => void;
+  onNavigateTo?: (section: Section) => void;
 }
 
 const statusColors = {
@@ -70,7 +71,7 @@ const statusIcons = {
   draft: Clock,
 };
 
-export function CampaignSection({ onOpenDealRoom }: CampaignSectionProps) {
+export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectionProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);

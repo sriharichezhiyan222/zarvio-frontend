@@ -195,7 +195,9 @@ const features: Feature[] = [
   },
 ];
 
-export function ComingSoonSection() {
+import type { Section } from "@/lib/types";
+
+export function ComingSoonSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const [emailSubscribed, setEmailSubscribed] = useState(false);
   const [email, setEmail] = useState("");
 
@@ -340,7 +342,11 @@ export function ComingSoonSection() {
                     <span className="text-sm text-muted-foreground">{feature.statLabel}</span>
                   </div>
                   {isLive && (
-                    <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    <Button 
+                      size="sm" 
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => onNavigateTo?.(feature.id === "ai-deal-room" ? "deal-room" : "overview")}
+                    >
                       Try Now
                       <ArrowRight className="w-4 h-4 ml-1" />
                     </Button>

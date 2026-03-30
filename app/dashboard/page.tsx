@@ -54,37 +54,37 @@ export default function Dashboard() {
   const renderSection = () => {
     switch (activeSection) {
       case "overview":
-        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
       case "campaign":
-        return <CampaignSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <CampaignSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
       case "deals":
-        return <DealsSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <DealsSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
       case "deal-room":
-        return <DealRoomSection leadId={selectedLeadId} key={selectedLeadId} />;
+        return <DealRoomSection leadId={selectedLeadId} key={selectedLeadId} onNavigateTo={handleSectionChange} />;
       case "customers":
-        return <CustomersSection />;
+        return <CustomersSection onNavigateTo={handleSectionChange} />;
       case "team":
-        return <TeamSection />;
+        return <TeamSection onNavigateTo={handleSectionChange} />;
       case "forecasting":
-        return <ForecastingSection />;
+        return <ForecastingSection onNavigateTo={handleSectionChange} />;
       case "reports":
-        return <ReportsSection />;
+        return <ReportsSection onNavigateTo={handleSectionChange} />;
       case "settings":
-        return <SettingsSection />;
+        return <SettingsSection onNavigateTo={handleSectionChange} />;
       case "outreach":
-        return <OutreachSection activeTab={outreachTab} onTabChange={setOutreachTab} />;
+        return <OutreachSection activeTab={outreachTab} onTabChange={setOutreachTab} onNavigateTo={handleSectionChange} />;
       case "lead-explorer":
         return <LeadExplorerSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
       case "lead-radar":
-        return <LeadRadarSection />;
+        return <LeadRadarSection onNavigateTo={handleSectionChange} />;
       case "ghost-closer":
-        return <GhostCloserSection />;
+        return <GhostCloserSection onNavigateTo={handleSectionChange} />;
       case "lead-marketplace":
-        return <LeadMarketplaceSection />;
+        return <LeadMarketplaceSection onNavigateTo={handleSectionChange} />;
       case "coming-soon":
-        return <ComingSoonSection />;
+        return <ComingSoonSection onNavigateTo={handleSectionChange} />;
       default:
-        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
     }
   };
 

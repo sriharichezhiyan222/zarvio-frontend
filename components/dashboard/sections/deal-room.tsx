@@ -9,6 +9,7 @@ import type {
   ChatMessage,
   SwarmAgent,
   AgentVote,
+  Section,
 } from "@/lib/types";
 import {
   DollarSign,
@@ -173,13 +174,14 @@ const voteIcons: Record<AgentVote, typeof CheckCircle2> = {
 
 interface DealRoomSectionProps {
   leadId?: string;
+  onNavigateTo?: (section: Section) => void;
   // TODO: These will come from API when backend is connected
   // lead?: Lead;
   // dealRoomData?: DealRoomData;
   // rasData?: RASData;
 }
 
-export function DealRoomSection({ leadId }: DealRoomSectionProps) {
+export function DealRoomSection({ leadId, onNavigateTo }: DealRoomSectionProps) {
   // ==========================================
   // State Management
   // ==========================================

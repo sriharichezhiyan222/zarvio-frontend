@@ -44,7 +44,9 @@ const riskFactors: { id: number; title: string; description: string; impact: str
 
 const scenarios: { name: string; probability: number; revenue: number; color: string }[] = [];
 
-export function ForecastingSection() {
+import type { Section } from "@/lib/types";
+
+export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const [timeframe, setTimeframe] = useState("quarterly");
   const { data: apiData, isLoading, error } = useDashboardForecast();
   
