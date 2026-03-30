@@ -126,7 +126,7 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
         if (leads.length === 0) {
           const fallback = await apiJson<any>("/api/find-leads", {
             method: "POST",
-            body: JSON.stringify({ query }),
+            body: JSON.stringify({ prompt: query }),
           });
           leads = fallback.leads || fallback.results || [];
         }
