@@ -2,6 +2,7 @@
 
 import useSWR, { SWRConfiguration } from "swr";
 import useSWRMutation from "swr/mutation";
+import { apiJson } from "@/lib/client-api";
 import type {
   Lead,
   Deal,
@@ -45,6 +46,20 @@ const postFetcher = async <T>(
   const json = await res.json();
   return json.data !== undefined ? json.data : json;
 };
+
+export function useApi() {
+  return {
+    getLeads: () => apiJson<any[]>("/leads"),
+    createLead: (payload: Record<string, unknown>) =>
+      apiJson<any>("/leads", { method: "POST", body: JSON.stringify(payload) }),
+    getCampaigns: () => apiJson<any[]>("/campaigns"),
+    createCampaign: (payload: Record<string, unknown>) =>
+      apiJson<any>("/campaigns", { method: "POST", body: JSON.stringify(payload) }),
+    createAction: (payload: Record<string, unknown>) =>
+      apiJson<any>("/actions", { method: "POST", body: JSON.stringify(payload) }),
+    getDeals: () => apiJson<any[]>("/deals"),
+  };
+}
 
 // ==========================================
 // Lead Hooks

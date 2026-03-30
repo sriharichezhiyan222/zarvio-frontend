@@ -20,6 +20,7 @@ import { LeadMarketplaceSection } from "@/components/dashboard/sections/lead-mar
 import { DealRoomSection } from "@/components/dashboard/sections/deal-room";
 import { ZarvioAssistant } from "@/components/dashboard/zarvio-assistant";
 import { RASSidebar } from "@/components/dashboard/ras-sidebar";
+import { LeadDetailDrawer } from "@/components/dashboard/lead-detail-drawer";
 import type { Section, OutreachTab } from "@/lib/types";
 
 export default function Dashboard() {
@@ -27,40 +28,29 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [outreachTab, setOutreachTab] = useState<OutreachTab>("emails");
   const [showRAS, setShowRAS] = useState(false);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>(undefined);
 
-  // Show RAS sidebar when on deal-room or ras section
   const isRASVisible = activeSection === "deal-room" || activeSection === "ras" || showRAS;
 
-  // Handle section change - if RAS is selected, show it alongside deal-room
   const handleSectionChange = (section: Section) => {
     if (section === "ras") {
       setShowRAS(true);
-      setActiveSection("deal-room"); // RAS works with deal-room
+      setActiveSection("deal-room");
     } else {
       setActiveSection(section);
-      if (section !== "deal-room") {
-        setShowRAS(false);
-      }
+      if (section !== "deal-room") setShowRAS(false);
     }
-  };
-
-  // Navigate to deal-room with a specific lead
-  const handleOpenDealRoom = (leadId: string) => {
-    setSelectedLeadId(leadId);
-    handleSectionChange("deal-room");
   };
 
   const renderSection = () => {
     switch (activeSection) {
       case "overview":
-        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <OverviewSection />;
       case "campaign":
-        return <CampaignSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <CampaignSection />;
       case "deals":
-        return <DealsSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <DealsSection />;
       case "deal-room":
-        return <DealRoomSection leadId={selectedLeadId} key={selectedLeadId} />;
+        return <DealRoomSection />;
       case "customers":
         return <CustomersSection />;
       case "team":
@@ -74,7 +64,7 @@ export default function Dashboard() {
       case "outreach":
         return <OutreachSection activeTab={outreachTab} onTabChange={setOutreachTab} />;
       case "lead-explorer":
-        return <LeadExplorerSection onOpenDealRoom={handleOpenDealRoom} onNavigateTo={handleSectionChange} />;
+        return <LeadExplorerSection />;
       case "lead-radar":
         return <LeadRadarSection />;
       case "ghost-closer":
@@ -84,7 +74,7 @@ export default function Dashboard() {
       case "coming-soon":
         return <ComingSoonSection />;
       default:
-        return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
+        return <OverviewSection />;
     }
   };
 
@@ -98,28 +88,12 @@ export default function Dashboard() {
         outreachTab={outreachTab}
         onOutreachTabChange={setOutreachTab}
       />
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ease-out ${
-          sidebarCollapsed ? "ml-[72px]" : "ml-[280px]"
-        } ${isRASVisible ? "mr-[300px] lg:mr-[300px]" : ""}`}
-      >
+      <div className={`flex-1 flex flex-col transition-all duration-300 ease-out ${sidebarCollapsed ? "ml-[72px]" : "ml-[280px]"} ${isRASVisible ? "mr-[300px] lg:mr-[300px]" : ""}`}>
         <Header activeSection={activeSection} />
-        <main className="flex-1 p-6 overflow-auto">
-          <div
-            key={activeSection + (selectedLeadId || "")}
-            className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-          >
-            {renderSection()}
-          </div>
-        </main>
+        <main className="flex-1 p-6 overflow-auto">{renderSection()}</main>
       </div>
-      {isRASVisible && (
-        <RASSidebar
-          onExecute={(action) => {
-            console.log("[v0] RAS Execute:", action);
-          }}
-        />
-      )}
+      {isRASVisible && <RASSidebar onExecute={(action) => console.log("RAS", action)} />}
+      <LeadDetailDrawer />
       <ZarvioAssistant />
     </div>
   );

@@ -1,518 +1,91 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import {
-  Search,
-  Target,
-  Megaphone,
-  PenLine,
-  Lightbulb,
-  BarChart3,
-  Trophy,
-  HelpCircle,
-  ClipboardCheck,
-  Clock,
-  Mic,
-  ArrowUp,
-  Plus,
-  Brain,
-  MessageSquare,
-  Settings,
-  History,
-  MemoryStick,
-  DoorOpen,
-  Sparkles,
-  Mail,
-  Globe,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Upload, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiJson, apiStream, getAuthContext } from "@/lib/client-api";
-import type { Section } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCrmStore } from "@/lib/stores/crm-store";
+import { normalizeLead } from "@/lib/crm";
+import { useApi } from "@/lib/hooks/use-api";
+import { toast } from "sonner";
 
-interface QuickAction {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  color: string;
-}
+export function LeadExplorerSection() {
+  const api = useApi();
+  const { leads, setLeads, upsertLead, setSelectedLead, loading, setLoading } = useCrmStore();
+  const [query, setQuery] = useState("");
 
-const quickActions: QuickAction[] = [
-  { id: "find-prospects", label: "Find Ideal Prospects", icon: Target, color: "text-amber-400" },
-  { id: "generate-campaign", label: "Generate a Full Campaign", icon: Megaphone, color: "text-blue-400" },
-  { id: "write-sequence", label: "Write a Sequence", icon: PenLine, color: "text-purple-400" },
-  { id: "campaign-ideas", label: "Campaign Ideas", icon: Lightbulb, color: "text-cyan-400" },
-  { id: "weekly-analytics", label: "Weekly Analytics", icon: BarChart3, color: "text-green-400" },
-  { id: "best-campaigns", label: "Best Performing Campaigns", icon: Trophy, color: "text-orange-400" },
-  { id: "get-advice", label: "Get Advice", icon: HelpCircle, color: "text-red-400" },
-  { id: "audit-workspace", label: "Audit My Workspace", icon: ClipboardCheck, color: "text-indigo-400" },
-];
+  const filtered = useMemo(
+    () => leads.filter((lead) => `${lead.name} ${lead.company}`.toLowerCase().includes(query.toLowerCase())),
+    [leads, query]
+  );
 
-interface ChatMessage {
-  id: string;
-  type: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  leads?: any[];
-}
-
-interface ChatHistory {
-  id: string;
-  title: string;
-  lastMessage: string;
-  timestamp: Date;
-}
-
-const sidebarItems = [
-  { id: "new-chat", label: "New chat", icon: Plus },
-  { id: "memory", label: "Memory", icon: Brain },
-  { id: "tasks", label: "Tasks", icon: Clock },
-  { id: "settings", label: "Settings", icon: Settings },
-];
-
-interface LeadExplorerSectionProps {
-  onOpenDealRoom?: (leadId: string) => void;
-  onNavigateTo?: (section: Section) => void;
-}
-
-export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplorerSectionProps) {
-  const [inputValue, setInputValue] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeSidebarItem, setActiveSidebarItem] = useState("new-chat");
-  const [chatHistories] = useState<ChatHistory[]>([]);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleSubmit = async () => {
-    if (!inputValue.trim()) return;
-    
-    const messageContent = inputValue;
-    const isSearch = messageContent.toLowerCase().startsWith("/search") || /(find|search|get|give|show).*(lead|prospect)/i.test(messageContent);
-    const isCampaign = /(generate|create|build).*(campaign|sequence)/i.test(messageContent) || messageContent === "Generate a Full Campaign";
-    
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: "user",
-      content: messageContent,
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, newMessage]);
-    setInputValue("");
-    setIsLoading(true);
-
-    const aiMessageId = (Date.now() + 1).toString();
-    const aiMessage: ChatMessage = {
-      id: aiMessageId,
-      type: "assistant",
-      content: "",
-      timestamp: new Date(),
-      leads: [],
-    };
-    setMessages((prev) => [...prev, aiMessage]);
-
+  const fetchLeads = async () => {
+    setLoading(true);
     try {
-      if (isSearch) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessageId
-              ? { ...msg, content: "Querying Apollo, HubSpot, Snov.io, and Instantly to extract and verify highly qualified leads..." }
-              : msg
-          )
-        );
-        const query = messageContent.replace("/search", "").trim();
-        const searchData = await apiJson<any>("/api/leads/search", {
-          method: "POST",
-          body: JSON.stringify({ query }),
-        });
-        let leads = searchData.leads || [];
-        if (leads.length === 0) {
-          const fallback = await apiJson<any>("/api/find-leads", {
-            method: "POST",
-            body: JSON.stringify({ prompt: query }),
-          });
-          leads = fallback.leads || fallback.results || [];
-        }
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessageId
-              ? { 
-                  ...msg, 
-                  content: `Found ${leads.length || 0} leads matching your criteria.`,
-                  leads
-                }
-              : msg
-          )
-        );
-      } else if (isCampaign) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessageId
-              ? { ...msg, content: "Opening Campaign section with your pipeline leads..." }
-              : msg
-          )
-        );
-        // Navigate to campaign section
-        setTimeout(() => onNavigateTo?.("campaign"), 800);
-      } else {
-        const { userId } = getAuthContext();
-        
-        const conversationHistory = messages.map(m => ({
-          role: m.type === "assistant" ? "assistant" : "user",
-          content: m.content
-        }));
-        conversationHistory.push({ role: "user", content: messageContent });
-        
-        await apiStream(
-          "/api/copilot",
-          { messages: conversationHistory, user_id: userId || "anonymous" },
-          (chunk) => {
-            setMessages((prev) =>
-              prev.map((msg) => (msg.id === aiMessageId ? { ...msg, content: msg.content + chunk } : msg))
-            );
-          }
-        );
-      }
-    } catch (error) {
-      console.error("Agent error:", error);
-      setMessages((prev) => 
-        prev.map((msg) => 
-          msg.id === aiMessageId 
-            ? { ...msg, content: "Sorry, I encountered an error fulfilling your request." } 
-            : msg
-        )
-      );
+      const data = await api.getLeads();
+      setLeads((Array.isArray(data) ? data : []).map((item) => normalizeLead(item, "explorer")));
+      toast.success("Leads synced from backend");
+    } catch {
+      toast.error("Failed to sync leads");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleQuickAction = (action: QuickAction) => {
-    setInputValue(action.label);
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
+  const addManualLead = async () => {
+    const payload = normalizeLead({ name: "New Lead", company: "New Company" }, "manual");
+    upsertLead(payload);
+    try {
+      await api.createLead(payload);
+      toast.success("Lead created");
+    } catch {
+      toast.error("Lead queued locally (sync failed)");
     }
   };
 
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + "px";
+  const importCsvSample = async () => {
+    const csvLeads = [
+      normalizeLead({ name: "Avery Stone", email: "avery@luma.io", company: "Luma", score: 73 }, "csv"),
+      normalizeLead({ name: "Noah Reed", email: "noah@brio.ai", company: "Brio", score: 67 }, "csv"),
+    ];
+    setLeads([...csvLeads, ...leads]);
+    toast.success("CSV leads imported to global pipeline");
+    for (const lead of csvLeads) {
+      api.createLead(lead).catch(() => undefined);
     }
-  }, [inputValue]);
+  };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] -m-6 bg-background">
-      {/* Left Sidebar */}
-      <div className="w-72 border-r border-border flex flex-col bg-card">
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="font-semibold text-lg text-foreground italic">Zarvio Copilot</h2>
-          <button className="w-8 h-8 rounded-lg bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors">
-            <MessageSquare className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* Sidebar Navigation */}
-        <nav className="p-3 space-y-1">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSidebarItem === item.id;
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveSidebarItem(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Chat History */}
-        <div className="flex-1 px-3 py-4 overflow-y-auto">
-          {chatHistories.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground">No chat history yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Start a new chat to begin</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {chatHistories.map((chat) => (
-                <button
-                  key={chat.id}
-                  className="w-full p-3 rounded-lg bg-secondary/50 hover:bg-secondary text-left transition-colors"
-                >
-                  <p className="text-sm font-medium text-foreground truncate">{chat.title}</p>
-                  <p className="text-xs text-muted-foreground truncate mt-1">{chat.lastMessage}</p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+    <div className="space-y-6">
+      <div className="flex gap-2">
+        <Button onClick={fetchLeads} disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+          Sync Leads
+        </Button>
+        <Button variant="secondary" onClick={importCsvSample}><Upload className="w-4 h-4 mr-2" />Import CSV</Button>
+        <Button variant="outline" onClick={addManualLead}><Plus className="w-4 h-4 mr-2" />Add Lead</Button>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {messages.length === 0 ? (
-          /* Empty State - Show Quick Actions */
-          <div className="flex-1 flex flex-col items-center justify-center px-8">
-            <h1 className="text-3xl font-semibold text-primary mb-12">
-              What can I help with?
-            </h1>
-
-            {/* Input Area */}
-            <div className="w-full max-w-2xl mb-8">
-              <div className="relative bg-card border border-border rounded-xl shadow-lg">
-                <textarea
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask Zarvio AI or type / to see prompts..."
-                  className="w-full min-h-[100px] max-h-[120px] px-4 pt-4 pb-12 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
-                  rows={3}
-                />
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                  <button className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
-                    <History className="w-4 h-4" />
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <button className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
-                      <Mic className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!inputValue.trim()}
-                      className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                        inputValue.trim()
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-secondary text-muted-foreground cursor-not-allowed"
-                      )}
-                    >
-                      <ArrowUp className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="w-full max-w-2xl">
-              <div className="flex flex-wrap justify-center gap-2">
-                {quickActions.slice(0, 3).map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={action.id}
-                      onClick={() => handleQuickAction(action)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-secondary hover:border-primary/50 transition-all text-sm"
-                    >
-                      <Icon className={cn("w-4 h-4", action.color)} />
-                      <span className="text-foreground">{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap justify-center gap-2 mt-2">
-                {quickActions.slice(3, 6).map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={action.id}
-                      onClick={() => handleQuickAction(action)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-secondary hover:border-primary/50 transition-all text-sm"
-                    >
-                      <Icon className={cn("w-4 h-4", action.color)} />
-                      <span className="text-foreground">{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap justify-center gap-2 mt-2">
-                {quickActions.slice(6).map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={action.id}
-                      onClick={() => handleQuickAction(action)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-secondary hover:border-primary/50 transition-all text-sm"
-                    >
-                      <Icon className={cn("w-4 h-4", action.color)} />
-                      <span className="text-foreground">{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Chat Messages */
-          <div className="flex-1 overflow-y-auto px-8 py-6">
-            <div className="max-w-2xl mx-auto space-y-6">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-4",
-                    message.type === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {message.type === "assistant" && (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center shrink-0">
-                      <Search className="w-4 h-4 text-primary-foreground" />
-                    </div>
-                  )}
-                  <div
-                    className={cn(
-                      "max-w-[80%] px-4 py-3 rounded-xl flex flex-col gap-2",
-                      message.type === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card border border-border text-foreground"
-                    )}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    
-                    {message.leads && message.leads.length > 0 && (
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-                        {message.leads.map((lead: any, i: number) => {
-                          const sources = ["Apollo", "HubSpot", "Instantly", "Snov.io"];
-                          const source = lead.source || sources[i % sources.length];
-                          return (
-                          <div key={i} className="p-4 bg-card border border-border rounded-xl shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:border-primary/50 transition-all">
-                             <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="text-sm font-bold text-foreground">{lead.company_name || lead.name || "Unknown Lead"}</p>
-                                  <p className="text-xs font-medium text-muted-foreground">{lead.title || "Target Prospect"}</p>
-                                </div>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
-                                  {source}
-                                </span>
-                             </div>
-                             
-                             <div className="flex items-center gap-3 mt-1">
-                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                   <Mail className="w-3 h-3 text-emerald-500" />
-                                   {lead.email ? "Verified" : "Catch-all Check"}
-                                </span>
-                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                   <Globe className="w-3 h-3 text-primary" />
-                                   {lead.industry || "B2B SaaS"}
-                                </span>
-                             </div>
-
-                             <div className="flex flex-wrap gap-1 mt-1 mb-6">
-                              {(lead.keywords || ["Decision Maker", "High Intent"]).slice(0, 3).map((kw: string, k: number) => (
-                                <span key={k} className="px-1.5 py-0.5 bg-secondary text-foreground font-medium text-[10px] rounded">
-                                  {kw}
-                                </span>
-                              ))}
-                             </div>
-
-                             <div className="absolute inset-x-0 bottom-0 p-2 bg-card border-t border-border flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
-                                {(lead.id || lead.lead_id || true) && (
-                                  <>
-                                  {onOpenDealRoom && (
-                                    <button
-                                      onClick={() => onOpenDealRoom(String(lead.id || lead.lead_id || "1"))}
-                                      className="flex-1 flex items-center justify-center gap-1 h-7 rounded bg-primary text-primary-foreground text-[10px] font-semibold hover:opacity-90 transition-opacity"
-                                    >
-                                      <DoorOpen className="w-3 h-3" />
-                                      Deal Room
-                                    </button>
-                                  )}
-                                  {onNavigateTo && (
-                                    <button
-                                      onClick={() => onNavigateTo("campaign")}
-                                      className="flex-1 flex items-center justify-center gap-1 h-7 rounded bg-secondary text-foreground border border-border text-[10px] font-semibold hover:bg-secondary/80 transition-colors"
-                                    >
-                                      <Sparkles className="w-3 h-3" />
-                                      Campaign
-                                    </button>
-                                  )}
-                                  </>
-                                )}
-                             </div>
-                          </div>
-                        )})}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center shrink-0">
-                    <Search className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                  <div className="bg-card border border-border rounded-xl px-4 py-3">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom Input for Chat Mode */}
-        {messages.length > 0 && (
-          <div className="border-t border-border p-4">
-            <div className="max-w-2xl mx-auto">
-              <div className="relative bg-card border border-border rounded-xl">
-                <textarea
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Continue the conversation..."
-                  className="w-full min-h-[60px] max-h-[120px] px-4 pt-3 pb-10 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
-                  rows={2}
-                />
-                <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
-                  <button className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <button className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
-                      <Mic className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!inputValue.trim()}
-                      className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                        inputValue.trim()
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-secondary text-muted-foreground cursor-not-allowed"
-                      )}
-                    >
-                      <ArrowUp className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle>Lead Explorer</CardTitle>
+          <Input placeholder="Search leads" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {filtered.map((lead) => (
+            <button
+              key={lead.id}
+              onClick={() => setSelectedLead(lead)}
+              className="w-full text-left rounded-lg border border-border p-3 hover:bg-secondary/50"
+            >
+              <p className="font-medium">{lead.name}</p>
+              <p className="text-sm text-muted-foreground">{lead.company} • {lead.source} • score {lead.score}</p>
+            </button>
+          ))}
+          {!filtered.length && <p className="text-sm text-muted-foreground">No leads yet. Sync or import CSV.</p>}
+        </CardContent>
+      </Card>
     </div>
   );
 }
