@@ -29,6 +29,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Section } from "@/lib/types";
+import { useCrmStore } from "@/lib/stores/crm-store";
+import { normalizeLead } from "@/lib/crm";
+import { useApi } from "@/lib/hooks/use-api";
 
 interface Lead {
   id: string | number;
@@ -71,6 +74,8 @@ const statusIcons = {
 };
 
 export function CampaignSection({ onOpenDealRoom }: CampaignSectionProps) {
+  const api = useApi();
+  const { setLeads: setSharedLeads, upsertCampaign, assignLeadToCampaign } = useCrmStore();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
@@ -108,6 +113,7 @@ export function CampaignSection({ onOpenDealRoom }: CampaignSectionProps) {
         }));
 
         setLeads(merged);
+        setSharedLeads(merged.map((lead) => normalizeLead(lead, "explorer")));
 
         // Build pseudo-campaigns from high-intent leads
         const highLeads = merged.filter(l => l.category === "high" || (l.score !== null && (l.score as number) >= 70));
@@ -183,6 +189,23 @@ export function CampaignSection({ onOpenDealRoom }: CampaignSectionProps) {
   };
 
   const selectedLeadObjects = leads.filter(l => selectedLeads.has(String(l.id)));
+
+  const handleCreateCampaign = async () => {
+    if (!selectedLeadObjects.length) return;
+    const campaignPayload = {
+      id: crypto.randomUUID(),
+      name: `Sequence ${new Date().toLocaleDateString()}`,
+      leadIds: selectedLeadObjects.map((lead) => String(lead.id)),
+      steps: [
+        { id: "step-1", channel: "email", label: "Step 1: Email" },
+        { id: "step-2", channel: "message", label: "Step 2: WhatsApp/SMS" },
+        { id: "step-3", channel: "call", label: "Step 3: Call (Ghost Caller)" },
+      ],
+    };
+    upsertCampaign(campaignPayload);
+    campaignPayload.leadIds.forEach((leadId) => assignLeadToCampaign(leadId, campaignPayload.id));
+    await api.createCampaign(campaignPayload).catch(() => undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -477,7 +500,7 @@ export function CampaignSection({ onOpenDealRoom }: CampaignSectionProps) {
               <p className="text-sm text-muted-foreground max-w-sm mb-6">
                 Add leads with high intent scores and campaigns will be created automatically, or create one manually.
               </p>
-              <Button className="bg-primary text-primary-foreground">
+              <Button className="bg-primary text-primary-foreground" onClick={handleCreateCampaign}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Campaign
               </Button>

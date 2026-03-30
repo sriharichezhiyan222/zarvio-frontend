@@ -20,6 +20,7 @@ import { LeadMarketplaceSection } from "@/components/dashboard/sections/lead-mar
 import { DealRoomSection } from "@/components/dashboard/sections/deal-room";
 import { ZarvioAssistant } from "@/components/dashboard/zarvio-assistant";
 import { RASSidebar } from "@/components/dashboard/ras-sidebar";
+import { LeadDetailDrawer } from "@/components/dashboard/lead-detail-drawer";
 import type { Section, OutreachTab } from "@/lib/types";
 
 export default function Dashboard() {
@@ -87,13 +88,7 @@ export default function Dashboard() {
         return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
     }
   };
-
-  return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar
-        activeSection={showRAS ? "ras" : activeSection}
-        onSectionChange={handleSectionChange}
-        collapsed={sidebarCollapsed}
+      {isRASVisible && <RASSidebar onExecute={(action) => console.log("RAS", action)} />}
         onCollapsedChange={setSidebarCollapsed}
         outreachTab={outreachTab}
         onOutreachTabChange={setOutreachTab}
@@ -120,6 +115,7 @@ export default function Dashboard() {
           }}
         />
       )}
+      <LeadDetailDrawer />
       <ZarvioAssistant />
     </div>
   );
