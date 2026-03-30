@@ -87,8 +87,8 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
     if (!inputValue.trim()) return;
     
     const messageContent = inputValue;
-    const isSearch = messageContent.toLowerCase().startsWith("/search") || messageContent.toLowerCase().includes("prospect");
-    const isCampaign = messageContent === "Generate a Full Campaign";
+    const isSearch = messageContent.toLowerCase().startsWith("/search") || /(find|search|get|give|show).*(lead|prospect)/i.test(messageContent);
+    const isCampaign = /(generate|create|build).*(campaign|sequence)/i.test(messageContent) || messageContent === "Generate a Full Campaign";
     
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
