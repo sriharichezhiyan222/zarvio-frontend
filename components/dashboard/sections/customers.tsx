@@ -45,7 +45,9 @@ const tierColors: Record<string, string> = {
   Starter: "bg-muted text-muted-foreground border-border",
 };
 
-export function CustomersSection() {
+import type { Section } from "@/lib/types";
+
+export function CustomersSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);

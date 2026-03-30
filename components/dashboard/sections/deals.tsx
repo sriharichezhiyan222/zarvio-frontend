@@ -14,6 +14,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import type { Section } from "@/lib/types";
+
 interface Deal {
   id: string;
   company: string;
@@ -32,7 +34,7 @@ const statusConfig = {
   lost: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Lost" },
 };
 
-export function DealsSection({ onOpenDealRoom }: { onOpenDealRoom?: (leadId: string) => void }) {
+export function DealsSection({ onOpenDealRoom, onNavigateTo }: { onOpenDealRoom?: (leadId: string) => void, onNavigateTo?: (section: Section) => void }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [deals, setDeals] = useState<Deal[]>([]);

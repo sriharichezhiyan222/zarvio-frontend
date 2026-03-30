@@ -105,7 +105,9 @@ function TeamMemberCard({ member, index }: { member: TeamMember; index: number }
   );
 }
 
-export function TeamSection() {
+import type { Section } from "@/lib/types";
+
+export function TeamSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const [chartLoaded, setChartLoaded] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);

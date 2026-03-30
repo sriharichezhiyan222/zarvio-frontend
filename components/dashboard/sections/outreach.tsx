@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { OutreachTab } from "@/lib/types";
+import type { OutreachTab, Section } from "@/lib/types";
 import { apiJson } from "@/lib/client-api";
 import {
   Mail,
@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 interface OutreachSectionProps {
   activeTab: OutreachTab;
   onTabChange: (tab: OutreachTab) => void;
+  onNavigateTo?: (section: Section) => void;
 }
 
 interface EmailOutreach {
@@ -94,7 +95,7 @@ const platformIcons = {
   sms: "sms",
 };
 
-export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps) {
+export function OutreachSection({ activeTab, onTabChange, onNavigateTo }: OutreachSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState<EmailOutreach[]>([]);
   const [calls, setCalls] = useState<PhoneOutreach[]>([]);

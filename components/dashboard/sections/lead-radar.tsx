@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-export function LeadRadarSection() {
+import type { Section } from "@/lib/types";
+
+export function LeadRadarSection({ onNavigateTo }: { onNavigateTo?: (section: Section) => void }) {
   const [emailSubscribed, setEmailSubscribed] = useState(false);
   const [email, setEmail] = useState("");
 
