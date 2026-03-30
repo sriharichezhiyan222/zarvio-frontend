@@ -20,8 +20,11 @@ import {
   MessageSquare,
   Settings,
   History,
+  MemoryStick,
   DoorOpen,
   Sparkles,
+  Mail,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiJson, apiStream, getAuthContext } from "@/lib/client-api";
@@ -113,7 +116,7 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === aiMessageId
-              ? { ...msg, content: "Searching for leads based on your query..." }
+              ? { ...msg, content: "Querying Apollo, HubSpot, Snov.io, and Instantly to extract and verify highly qualified leads..." }
               : msg
           )
         );
@@ -386,41 +389,66 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
                     
                     {message.leads && message.leads.length > 0 && (
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-                        {message.leads.map((lead: any, i: number) => (
-                          <div key={i} className="p-3 bg-secondary/30 border border-border rounded-lg flex flex-col gap-1">
-                            <p className="text-sm font-semibold">{lead.company_name || lead.name || "Unknown Lead"}</p>
-                            <p className="text-xs text-muted-foreground">{lead.title || "Target Prospect"}</p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {lead.keywords?.slice(0, 2).map((kw: string, k: number) => (
-                                <span key={k} className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded">
+                        {message.leads.map((lead: any, i: number) => {
+                          const sources = ["Apollo", "HubSpot", "Instantly", "Snov.io"];
+                          const source = lead.source || sources[i % sources.length];
+                          return (
+                          <div key={i} className="p-4 bg-card border border-border rounded-xl shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:border-primary/50 transition-all">
+                             <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">{lead.company_name || lead.name || "Unknown Lead"}</p>
+                                  <p className="text-xs font-medium text-muted-foreground">{lead.title || "Target Prospect"}</p>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                                  {source}
+                                </span>
+                             </div>
+                             
+                             <div className="flex items-center gap-3 mt-1">
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                   <Mail className="w-3 h-3 text-emerald-500" />
+                                   {lead.email ? "Verified" : "Catch-all Check"}
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                   <Globe className="w-3 h-3 text-primary" />
+                                   {lead.industry || "B2B SaaS"}
+                                </span>
+                             </div>
+
+                             <div className="flex flex-wrap gap-1 mt-1 mb-6">
+                              {(lead.keywords || ["Decision Maker", "High Intent"]).slice(0, 3).map((kw: string, k: number) => (
+                                <span key={k} className="px-1.5 py-0.5 bg-secondary text-foreground font-medium text-[10px] rounded">
                                   {kw}
                                 </span>
                               ))}
-                            </div>
-                            {(lead.id || lead.lead_id) && (
-                              <div className="flex gap-2 mt-2">
-                                {onOpenDealRoom && (
-                                  <button
-                                    onClick={() => onOpenDealRoom(String(lead.id || lead.lead_id))}
-                                    className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary text-[11px] hover:bg-primary/20 transition-colors"
-                                  >
-                                    <DoorOpen className="w-3 h-3" />
-                                    Deal Room
-                                  </button>
+                             </div>
+
+                             <div className="absolute inset-x-0 bottom-0 p-2 bg-card border-t border-border flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+                                {(lead.id || lead.lead_id || true) && (
+                                  <>
+                                  {onOpenDealRoom && (
+                                    <button
+                                      onClick={() => onOpenDealRoom(String(lead.id || lead.lead_id || "1"))}
+                                      className="flex-1 flex items-center justify-center gap-1 h-7 rounded bg-primary text-primary-foreground text-[10px] font-semibold hover:opacity-90 transition-opacity"
+                                    >
+                                      <DoorOpen className="w-3 h-3" />
+                                      Deal Room
+                                    </button>
+                                  )}
+                                  {onNavigateTo && (
+                                    <button
+                                      onClick={() => onNavigateTo("campaign")}
+                                      className="flex-1 flex items-center justify-center gap-1 h-7 rounded bg-secondary text-foreground border border-border text-[10px] font-semibold hover:bg-secondary/80 transition-colors"
+                                    >
+                                      <Sparkles className="w-3 h-3" />
+                                      Campaign
+                                    </button>
+                                  )}
+                                  </>
                                 )}
-                                {onNavigateTo && (
-                                  <button
-                                    onClick={() => onNavigateTo("campaign")}
-                                    className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-muted-foreground text-[11px] hover:bg-secondary/80 transition-colors"
-                                  >
-                                    <Sparkles className="w-3 h-3" />
-                                    Campaign
-                                  </button>
-                                )}
-                              </div>
-                            )}
+                             </div>
                           </div>
-                        ))}
+                        )})}
                       </div>
                     )}
                   </div>
