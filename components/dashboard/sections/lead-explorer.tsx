@@ -29,6 +29,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { apiJson, apiStream, getAuthContext } from "@/lib/client-api";
 import type { Section } from "@/lib/types";
+import { useCrmStore } from "@/lib/stores/crm-store";
+import { normalizeLead } from "@/lib/crm";
 
 interface QuickAction {
   id: string;
@@ -82,6 +84,7 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
   const [activeSidebarItem, setActiveSidebarItem] = useState("new-chat");
   const [chatHistories] = useState<ChatHistory[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { leads: globalLeads, setLeads, upsertLead, setSelectedLead } = useCrmStore();
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) return;
@@ -144,6 +147,8 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
               : msg
           )
         );
+        const normalized = leads.map((lead: any) => normalizeLead(lead, "explorer"));
+        setLeads([...normalized, ...globalLeads.filter((lead) => !normalized.some((item: { id: string }) => item.id === lead.id))]);
       } else if (isCampaign) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -428,7 +433,11 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
                                   <>
                                   {onOpenDealRoom && (
                                     <button
-                                      onClick={() => onOpenDealRoom(String(lead.id || lead.lead_id || "1"))}
+                                      onClick={() => {
+                                        upsertLead(normalizeLead(lead, "explorer"));
+                                        setSelectedLead(normalizeLead(lead, "explorer"));
+                                        onOpenDealRoom(String(lead.id || lead.lead_id || "1"));
+                                      }}
                                       className="flex-1 flex items-center justify-center gap-1 h-7 rounded bg-primary text-primary-foreground text-[10px] font-semibold hover:opacity-90 transition-opacity"
                                     >
                                       <DoorOpen className="w-3 h-3" />
@@ -437,7 +446,11 @@ export function LeadExplorerSection({ onOpenDealRoom, onNavigateTo }: LeadExplor
                                   )}
                                   {onNavigateTo && (
                                     <button
-                                      onClick={() => onNavigateTo("campaign")}
+                                      onClick={() => {
+                                        upsertLead(normalizeLead(lead, "explorer"));
+                                        setSelectedLead(normalizeLead(lead, "explorer"));
+                                        onNavigateTo("campaign");
+                                      }}
                                       className="flex-1 flex items-center justify-center gap-1 h-7 rounded bg-secondary text-foreground border border-border text-[10px] font-semibold hover:bg-secondary/80 transition-colors"
                                     >
                                       <Sparkles className="w-3 h-3" />

@@ -25,6 +25,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCrmStore } from "@/lib/stores/crm-store";
+import { normalizeLead } from "@/lib/crm";
+import { useApi } from "@/lib/hooks/use-api";
 
 interface OutreachSectionProps {
   activeTab: OutreachTab;
@@ -95,6 +98,8 @@ const platformIcons = {
 };
 
 export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps) {
+  const api = useApi();
+  const { setLeads: setSharedLeads, addAction } = useCrmStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState<EmailOutreach[]>([]);
   const [calls, setCalls] = useState<PhoneOutreach[]>([]);
@@ -107,6 +112,7 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
       try {
         const leads = await apiJson<any[]>("/leads");
         const normalized = (Array.isArray(leads) ? leads : []).slice(0, 20);
+        setSharedLeads(normalized.map((lead) => normalizeLead(lead, "explorer")));
         setEmails(
           normalized.map((lead, idx) => ({
             id: String(lead.id ?? idx),
@@ -189,6 +195,21 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
     [messages, searchQuery]
   );
 
+  const createQuickAction = async (leadName: string) => {
+    const lead = emails.find((item) => item.recipient === leadName) || calls.find((item) => item.contact === leadName) || messages.find((item) => item.contact === leadName);
+    if (!lead) return;
+    const record = {
+      id: crypto.randomUUID(),
+      leadId: String((lead as any).id),
+      type: activeTab === "emails" ? "email" : activeTab === "phone" ? "call" : "message",
+      status: activeTab === "phone" ? "scheduled" : "sent",
+      note: `Logged from ${activeTab} module`,
+      createdAt: new Date().toISOString(),
+    } as const;
+    addAction(record);
+    await api.createAction(record).catch(() => undefined);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -198,7 +219,7 @@ export function OutreachSection({ activeTab, onTabChange }: OutreachSectionProps
             Manage your multi-channel outreach campaigns
           </p>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => createQuickAction(emails[0]?.recipient || calls[0]?.contact || messages[0]?.contact || "")}>
           <Plus className="w-4 h-4 mr-2" />
           New Sequence
         </Button>

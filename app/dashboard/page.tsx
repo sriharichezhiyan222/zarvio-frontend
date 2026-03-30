@@ -20,6 +20,7 @@ import { LeadMarketplaceSection } from "@/components/dashboard/sections/lead-mar
 import { DealRoomSection } from "@/components/dashboard/sections/deal-room";
 import { ZarvioAssistant } from "@/components/dashboard/zarvio-assistant";
 import { RASSidebar } from "@/components/dashboard/ras-sidebar";
+import { LeadDetailDrawer } from "@/components/dashboard/lead-detail-drawer";
 import type { Section, OutreachTab } from "@/lib/types";
 
 export default function Dashboard() {
@@ -120,6 +121,7 @@ export default function Dashboard() {
           }}
         />
       )}
+      <LeadDetailDrawer />
       <ZarvioAssistant />
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
+import { useCrmStore } from "@/lib/stores/crm-store";
 import {
   Search,
   Filter,
@@ -33,6 +34,7 @@ const statusConfig = {
 };
 
 export function DealsSection({ onOpenDealRoom }: { onOpenDealRoom?: (leadId: string) => void }) {
+  const { setDeals: setSharedDeals, setSelectedLead, leads: sharedLeads } = useCrmStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -69,6 +71,15 @@ export function DealsSection({ onOpenDealRoom }: { onOpenDealRoom?: (leadId: str
           };
         });
         setDeals(normalized);
+        setSharedDeals(
+          normalized.map((deal) => ({
+            id: deal.id,
+            leadId: deal.id,
+            company: deal.company,
+            value: deal.value,
+            stage: deal.status === "won" ? "closed" : deal.status === "pending" ? "contacted" : "new",
+          }))
+        );
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load deals");
       } finally {
@@ -183,6 +194,10 @@ export function DealsSection({ onOpenDealRoom }: { onOpenDealRoom?: (leadId: str
                 return (
                   <tr
                     key={deal.id}
+                    onClick={() => {
+                      const lead = sharedLeads.find((item) => item.id === deal.id);
+                      if (lead) setSelectedLead(lead);
+                    }}
                     className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors duration-150 cursor-pointer animate-in fade-in slide-in-from-left-2"
                     style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
                   >
