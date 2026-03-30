@@ -88,13 +88,7 @@ export default function Dashboard() {
         return <OverviewSection onOpenDealRoom={handleOpenDealRoom} />;
     }
   };
-
-  return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar
-        activeSection={showRAS ? "ras" : activeSection}
-        onSectionChange={handleSectionChange}
-        collapsed={sidebarCollapsed}
+      {isRASVisible && <RASSidebar onExecute={(action) => console.log("RAS", action)} />}
         onCollapsedChange={setSidebarCollapsed}
         outreachTab={outreachTab}
         onOutreachTabChange={setOutreachTab}
