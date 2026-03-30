@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +32,10 @@ import {
   ExternalLink,
   Zap,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { apiJson } from "@/lib/client-api";
 
 const integrations = [
   {
@@ -96,9 +98,9 @@ const notificationSettings = [
     push: false,
   },
   {
-    id: "pipeline_alerts",
-    label: "Pipeline Alerts",
-    description: "Alerts for pipeline changes and risks",
+    id: "campaign_alerts",
+    label: "Campaign Alerts",
+    description: "Alerts for campaign changes and risks",
     email: true,
     push: true,
   },
@@ -126,6 +128,27 @@ export function SettingsSection({ onNavigateTo }: { onNavigateTo?: (section: Sec
   const [notifications, setNotifications] = useState(notificationSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  
+  // AI Training state
+  const [businessDesc, setBusinessDesc] = useState("");
+  const [icp, setIcp] = useState("");
+  const [aiTone, setAiTone] = useState("professional");
+
+  useEffect(() => {
+    async function fetchTraining() {
+      try {
+        const config = await apiJson<any>("/api/training").catch(() => null);
+        if (config) {
+          setBusinessDesc(config.business_description || "");
+          setIcp(config.icp || "");
+          setAiTone(config.tone || "professional");
+        }
+      } catch (err) {
+        console.error("Failed to fetch AI training config:", err);
+      }
+    }
+    fetchTraining();
+  }, []);
 
   const handleSignOut = () => {
     setIsSigningOut(true);
@@ -135,9 +158,25 @@ export function SettingsSection({ onNavigateTo }: { onNavigateTo?: (section: Sec
     }, 1000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 1500);
+    try {
+      if (activeTab === "ai") {
+        await apiJson("/api/training", {
+          method: "POST",
+          body: JSON.stringify({
+            business_description: businessDesc,
+            icp: icp,
+            tone: aiTone
+          })
+        });
+      }
+      // Simulate other saves
+      setTimeout(() => setIsSaving(false), 1500);
+    } catch (err) {
+      console.error("Save failed:", err);
+      setIsSaving(false);
+    }
   };
 
   const toggleNotification = (id: string, type: "email" | "push") => {
@@ -184,6 +223,13 @@ export function SettingsSection({ onNavigateTo }: { onNavigateTo?: (section: Sec
           >
             <Shield className="w-4 h-4 mr-2" />
             Security
+          </TabsTrigger>
+          <TabsTrigger
+            value="ai"
+            className="data-[state=active]:bg-card data-[state=active]:text-foreground text-primary"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            AI Training
           </TabsTrigger>
         </TabsList>
 
@@ -622,6 +668,97 @@ export function SettingsSection({ onNavigateTo }: { onNavigateTo?: (section: Sec
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        {/* AI Training Tab */}
+        <TabsContent value="ai" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Card className="border-primary/20 bg-card">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <CardTitle className="text-base font-medium">AI Copilot Training</CardTitle>
+              </div>
+              <CardDescription>
+                Train Zarvio Copilot on your business context to improve lead scoring and outreach quality.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="businessDesc">Business Description</Label>
+                  <textarea
+                    id="businessDesc"
+                    value={businessDesc}
+                    onChange={(e) => setBusinessDesc(e.target.value)}
+                    className="w-full min-h-[120px] rounded-md border border-border bg-secondary p-3 text-sm focus:border-primary outline-none transition-all"
+                    placeholder="Describe what your company does, your main products/services, and your unique value proposition..."
+                  />
+                  <p className="text-xs text-muted-foreground italic">
+                    The AI uses this to understand how to position your company during outreach.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="targetAudience">Ideal Customer Profile (ICP)</Label>
+                  <textarea
+                    id="targetAudience"
+                    value={icp}
+                    onChange={(e) => setIcp(e.target.value)}
+                    className="w-full min-h-[120px] rounded-md border border-border bg-secondary p-3 text-sm focus:border-primary outline-none transition-all"
+                    placeholder="Who is your perfect customer? (e.g. CTOs of Series A SaaS companies with 50-200 employees)..."
+                  />
+                  <p className="text-xs text-muted-foreground italic">
+                    This helps the AI score leads more accurately and find better matches in Lead Explorer.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>AI Tone & Personality</Label>
+                  <Select value={aiTone} onValueChange={setAiTone}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="professional">Professional & Authoritative</SelectItem>
+                      <SelectItem value="friendly">Friendly & Approachable</SelectItem>
+                      <SelectItem value="direct">Direct & Concise</SelectItem>
+                      <SelectItem value="creative">Creative & Disruptive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/10 flex items-start gap-3">
+                <Zap className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Continuous Training</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Zarvio also learns from your interactions. Every time you edit an AI outreach or 
+                    mark a lead as "High Interest", the model fine-tunes its understanding of your preferences.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSave}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[140px]"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Training AI...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Save & Train AI
+                </>
+              )}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

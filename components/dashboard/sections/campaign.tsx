@@ -168,7 +168,7 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
       setGeneratedEmail({
         leadId,
         subject: `Quick question for ${lead.first_name || lead.name}`,
-        body: `Hi ${lead.first_name || lead.name},\n\nI noticed ${lead.company} and thought ZarvioAI could help you scale your pipeline significantly.\n\nWould you have 15 minutes to chat this week?\n\nBest,\nThe Zarvio Team`,
+        body: `Hi ${lead.first_name || lead.name},\n\nI noticed ${lead.company} and thought ZarvioAI could help you scale your campaign significantly.\n\nWould you have 15 minutes to chat this week?\n\nBest,\nThe Zarvio Team`,
       });
     } finally {
       setGeneratingFor(null);
@@ -191,7 +191,7 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            AI-powered outreach campaigns connected to your lead pipeline
+            AI-powered outreach campaigns connected to your lead campaign
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -256,7 +256,7 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {tab === "leads" ? `Lead Pipeline (${leads.length})` : `Campaigns (${campaigns.length})`}
+            {tab === "leads" ? `Lead Campaign (${leads.length})` : `Campaigns (${campaigns.length})`}
           </button>
         ))}
       </div>
@@ -353,7 +353,7 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
           <Card className="bg-card border-border">
             <CardHeader className="pb-3 border-b border-border">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-medium">Lead Pipeline</CardTitle>
+                <CardTitle className="text-base font-medium">Lead Campaign</CardTitle>
                 <span className="text-xs text-muted-foreground">Select leads to compose outreach or open in Deal Room</span>
               </div>
             </CardHeader>

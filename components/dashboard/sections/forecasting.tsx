@@ -38,7 +38,7 @@ import {
 
 const forecastData: { month: string; actual: number | null; forecast: number; target: number }[] = [];
 
-const quarterlyForecast: { quarter: string; committed: number; bestCase: number; pipeline: number }[] = [];
+const quarterlyForecast: { quarter: string; committed: number; bestCase: number; campaign: number }[] = [];
 
 const riskFactors: { id: number; title: string; description: string; impact: string; severity: string; deals: string[] }[] = [];
 
@@ -54,13 +54,13 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
     return <div className="p-8 text-center text-destructive bg-destructive/10 rounded-xl border border-destructive/20 mt-6">Failed to load forecast data.</div>;
   }
 
-  const currentQuarterTarget = apiData?.breakdown?.pipeline || 0;
+  const currentQuarterTarget = apiData?.breakdown?.campaign || 0;
   // Use API total if available, else fallback
   const currentQuarterForecast = apiData?.breakdown?.committed 
     ? apiData.breakdown.committed + apiData.breakdown.best_case
     : 0;
   const forecastAccuracy = apiData?.monthly_actuals?.length ? 100 : 0;
-  const pipelineCoverage = currentQuarterTarget > 0 ? Number((currentQuarterForecast / currentQuarterTarget).toFixed(2)) : 0;
+  const campaignCoverage = currentQuarterTarget > 0 ? Number((currentQuarterForecast / currentQuarterTarget).toFixed(2)) : 0;
 
   let displayForecastData = forecastData;
   if (apiData?.monthly_actuals && apiData?.monthly_forecast) {
@@ -82,7 +82,7 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
         quarter: "Q3 (AI Pred)",
         committed: apiData.breakdown.committed || 0,
         bestCase: apiData.breakdown.best_case || 0,
-        pipeline: apiData.breakdown.pipeline || 0,
+        campaign: apiData.breakdown.campaign || 0,
       }
     ];
   }
@@ -103,7 +103,7 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
         <div>
           <h2 className="text-xl font-semibold text-foreground">Sales Forecasting</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            AI-powered predictions based on historical data and pipeline analysis
+            AI-powered predictions based on historical data and campaign analysis
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -144,8 +144,8 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
             trendUp: true,
           },
           {
-            label: "Pipeline Coverage",
-            value: `${pipelineCoverage}x`,
+            label: "Campaign Coverage",
+            value: `${campaignCoverage}x`,
             subtext: "vs quota",
             icon: TrendingUp,
             trend: "0x",
@@ -315,7 +315,7 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
                   />
                   <Bar dataKey="committed" name="Committed" fill="oklch(0.7 0.18 145)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="bestCase" name="Best Case" fill="oklch(0.7 0.18 220)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="pipeline" name="Pipeline" fill="oklch(0.22 0.005 260)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="campaign" name="Campaign" fill="oklch(0.22 0.005 260)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

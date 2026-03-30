@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { RevenueChart } from "@/components/dashboard/charts/revenue-chart";
-import { PipelineOverview } from "@/components/dashboard/charts/pipeline-overview";
+import { CampaignOverview } from "@/components/dashboard/charts/campaign-overview";
 import { RecentDeals } from "@/components/dashboard/recent-deals";
 import { TopPerformers } from "@/components/dashboard/top-performers";
 import { DollarSign, TrendingUp, Users, Target, LayoutDashboard } from "lucide-react";
@@ -144,7 +144,7 @@ export function OverviewSection({ onOpenDealRoom, onNavigateTo }: OverviewSectio
             </div>
           )}
         </div>
-        <PipelineOverview data={stats} />
+        <CampaignOverview data={stats} />
       </div>
 
       {/* Bottom row */}

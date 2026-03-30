@@ -5,11 +5,11 @@ import { useState, useEffect } from "react";
 import { OverviewStats } from "@/lib/types";
 import { Target } from "lucide-react";
 
-interface PipelineOverviewProps {
+interface CampaignOverviewProps {
   data: OverviewStats | null;
 }
 
-export function PipelineOverview({ data: stats }: PipelineOverviewProps) {
+export function CampaignOverview({ data: stats }: CampaignOverviewProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -41,9 +41,9 @@ export function PipelineOverview({ data: stats }: PipelineOverviewProps) {
         <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
           <Target className="w-6 h-6 text-muted-foreground" />
         </div>
-        <h3 className="text-base font-semibold text-foreground">Pipeline is empty</h3>
+        <h3 className="text-base font-semibold text-foreground">Campaign is empty</h3>
         <p className="text-sm text-muted-foreground mt-1 max-w-[200px]">
-          Start adding leads to see your pipeline distribution
+          Start adding leads to see your campaign distribution
         </p>
       </div>
     );
@@ -52,7 +52,7 @@ export function PipelineOverview({ data: stats }: PipelineOverviewProps) {
   return (
     <div className="bg-card border border-border rounded-xl p-5 h-[380px] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
       <div className="mb-6">
-        <h3 className="text-base font-semibold text-foreground">Pipeline Stages</h3>
+        <h3 className="text-base font-semibold text-foreground">Campaign Stages</h3>
         <p className="text-sm text-muted-foreground mt-0.5">Distribution by stage</p>
       </div>
 
@@ -79,7 +79,7 @@ export function PipelineOverview({ data: stats }: PipelineOverviewProps) {
         ))}
       </div>
 
-      {/* Total pipeline value */}
+      {/* Total campaign value */}
       <div className="mt-6 pt-5 border-t border-border">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Active Conversion Rate</span>
