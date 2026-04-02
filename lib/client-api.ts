@@ -72,7 +72,23 @@ export async function apiJson<T = unknown>(
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let message = `Request failed (${response.status})`;
+    try {
+      const errBody = (await response.json()) as {
+        detail?: string | Array<{ msg?: string }>;
+        message?: string;
+      };
+      if (typeof errBody?.detail === "string") {
+        message = errBody.detail;
+      } else if (Array.isArray(errBody?.detail)) {
+        message = errBody.detail.map((d) => d.msg).filter(Boolean).join("; ") || message;
+      } else if (typeof errBody?.message === "string") {
+        message = errBody.message;
+      }
+    } catch {
+      /* keep default */
+    }
+    throw new Error(message);
   }
 
   const json = await response.json();

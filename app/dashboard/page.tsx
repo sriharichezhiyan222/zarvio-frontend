@@ -19,6 +19,7 @@ import { GhostCloserSection } from "@/components/dashboard/sections/ghost-closer
 import { LeadMarketplaceSection } from "@/components/dashboard/sections/lead-marketplace";
 import { DealRoomSection } from "@/components/dashboard/sections/deal-room";
 import { ZarvioAssistant } from "@/components/dashboard/zarvio-assistant";
+import { Toaster } from "@/components/ui/toaster";
 import { RASSidebar } from "@/components/dashboard/ras-sidebar";
 import type { Section, OutreachTab } from "@/lib/types";
 
@@ -121,6 +122,7 @@ export default function Dashboard() {
         />
       )}
       <ZarvioAssistant />
+      <Toaster />
     </div>
   );
 }
