@@ -66,44 +66,44 @@ export function RevenueChart({ data: forecastData }: RevenueChartProps) {
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="targetGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.7 0.18 145)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="oklch(0.7 0.18 145)" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 260)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
               dy={10}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
               tickFormatter={(value) => `$${value / 1000}k`}
               dx={-10}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "oklch(0.12 0.005 260)",
-                border: "1px solid oklch(0.22 0.005 260)",
+                backgroundColor: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: "8px",
                 fontSize: "12px",
               }}
-              labelStyle={{ color: "oklch(0.95 0 0)", fontWeight: 600 }}
-              itemStyle={{ color: "oklch(0.65 0 0)" }}
+              labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+              itemStyle={{ color: "var(--muted-foreground)" }}
               formatter={(value: number) => [`$${(value / 1000).toFixed(0)}k`, ""]}
             />
             <Area
               type="monotone"
               dataKey="target"
-              stroke="oklch(0.7 0.18 145)"
+              stroke="var(--chart-2)"
               strokeWidth={2}
               fill="url(#targetGradient)"
               dot={false}
@@ -111,7 +111,7 @@ export function RevenueChart({ data: forecastData }: RevenueChartProps) {
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="oklch(0.7 0.18 220)"
+              stroke="var(--chart-1)"
               strokeWidth={2}
               fill="url(#revenueGradient)"
               dot={false}

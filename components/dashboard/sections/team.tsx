@@ -224,34 +224,34 @@ export function TeamSection({ onNavigateTo }: { onNavigateTo?: (section: Section
         <div className={`h-[250px] transition-opacity duration-700 ${chartLoaded ? 'opacity-100' : 'opacity-0'}`}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={performanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 260)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                 dy={10}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                 tickFormatter={(value) => `$${value}k`}
                 dx={-10}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "oklch(0.12 0.005 260)",
-                  border: "1px solid oklch(0.22 0.005 260)",
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                labelStyle={{ color: "oklch(0.95 0 0)", fontWeight: 600 }}
-                itemStyle={{ color: "oklch(0.65 0 0)" }}
+                labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+                itemStyle={{ color: "var(--muted-foreground)" }}
                 formatter={(value: number) => [`$${value}k`, ""]}
               />
-              <Bar dataKey="quota" fill="oklch(0.65 0 0 / 0.2)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="revenue" fill="oklch(0.7 0.18 220)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="quota" fill="var(--muted)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

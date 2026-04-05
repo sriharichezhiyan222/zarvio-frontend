@@ -229,34 +229,34 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
               <AreaChart data={displayForecastData}>
                 <defs>
                   <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="oklch(0.7 0.18 145)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="oklch(0.7 0.18 145)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 260)" />
-                <XAxis dataKey="month" stroke="oklch(0.65 0 0)" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} />
                 <YAxis
-                  stroke="oklch(0.65 0 0)"
+                  stroke="var(--muted-foreground)"
                   fontSize={12}
                   tickFormatter={(value) => `$${value / 1000}K`}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "oklch(0.12 0.005 260)",
-                    border: "1px solid oklch(0.22 0.005 260)",
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
                     borderRadius: "8px",
-                    color: "oklch(0.95 0 0)",
+                    color: "var(--foreground)",
                   }}
                   formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
                 />
                 <Area
                   type="monotone"
                   dataKey="target"
-                  stroke="oklch(0.65 0 0)"
+                  stroke="var(--muted-foreground)"
                   strokeDasharray="5 5"
                   fill="none"
                   strokeWidth={1}
@@ -264,14 +264,14 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
                 <Area
                   type="monotone"
                   dataKey="forecast"
-                  stroke="oklch(0.7 0.18 220)"
+                  stroke="var(--chart-1)"
                   fill="url(#forecastGradient)"
                   strokeWidth={2}
                 />
                 <Area
                   type="monotone"
                   dataKey="actual"
-                  stroke="oklch(0.7 0.18 145)"
+                  stroke="var(--success)"
                   fill="url(#actualGradient)"
                   strokeWidth={2}
                 />
@@ -291,31 +291,31 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={displayQuarterly} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 260)" />
-                  <XAxis dataKey="quarter" stroke="oklch(0.65 0 0)" fontSize={12} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="quarter" stroke="var(--muted-foreground)" fontSize={12} />
                   <YAxis
-                    stroke="oklch(0.65 0 0)"
+                    stroke="var(--muted-foreground)"
                     fontSize={12}
                     tickFormatter={(value) => `$${value / 1000000}M`}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "oklch(0.12 0.005 260)",
-                      border: "1px solid oklch(0.22 0.005 260)",
+                      backgroundColor: "var(--card)",
+                      border: "1px solid var(--border)",
                       borderRadius: "8px",
-                      color: "oklch(0.95 0 0)",
+                      color: "var(--foreground)",
                     }}
                     formatter={(value: number) => [`$${(value / 1000000).toFixed(2)}M`, ""]}
                   />
                   <Legend
                     wrapperStyle={{ fontSize: "12px" }}
                     formatter={(value) => (
-                      <span style={{ color: "oklch(0.65 0 0)" }}>{value}</span>
+                      <span className="text-muted-foreground">{value}</span>
                     )}
                   />
-                  <Bar dataKey="committed" name="Committed" fill="oklch(0.7 0.18 145)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="bestCase" name="Best Case" fill="oklch(0.7 0.18 220)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="campaign" name="Campaign" fill="oklch(0.22 0.005 260)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="committed" name="Committed" fill="var(--success)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="bestCase" name="Best Case" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="campaign" name="Campaign" fill="var(--border)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -344,10 +344,10 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
                       style={{
                         backgroundColor:
                           scenario.color === "accent"
-                            ? "oklch(0.7 0.18 145)"
+                            ? "var(--success)"
                             : scenario.color === "chart-1"
-                            ? "oklch(0.7 0.18 220)"
-                            : "oklch(0.65 0.2 25)",
+                            ? "var(--chart-1)"
+                            : "var(--destructive)",
                       }}
                     />
                     <div>
@@ -368,10 +368,10 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
                       width: `${scenario.probability}%`,
                       backgroundColor:
                         scenario.color === "accent"
-                          ? "oklch(0.7 0.18 145)"
+                          ? "var(--success)"
                           : scenario.color === "chart-1"
-                          ? "oklch(0.7 0.18 220)"
-                          : "oklch(0.65 0.2 25)",
+                          ? "var(--chart-1)"
+                          : "var(--destructive)",
                     }}
                   />
                 </div>
@@ -386,7 +386,7 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-medium">Risk Factors</CardTitle>
-            <Badge variant="outline" className="text-chart-3 border-chart-3/30">
+            <Badge variant="outline" className="text-warning border-warning/30">
               <AlertTriangle className="w-3 h-3 mr-1" />
               {riskFactors.length} identified
             </Badge>
@@ -400,14 +400,14 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
             {riskFactors.map((risk, index) => (
               <div
                 key={risk.id}
-                className="p-4 rounded-lg bg-secondary/50 border border-border hover:border-chart-3/30 transition-all duration-300 group animate-in fade-in slide-in-from-bottom-2"
+                className="p-4 rounded-lg bg-secondary/50 border border-border hover:border-warning/30 transition-all duration-300 group animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: `${index * 75}ms` }}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-start gap-3">
                     <div
                       className={`w-2 h-2 rounded-full mt-2 ${
-                        risk.severity === "high" ? "bg-destructive" : "bg-chart-3"
+                        risk.severity === "high" ? "bg-destructive" : "bg-warning"
                       }`}
                     />
                     <div>
@@ -419,7 +419,7 @@ export function ForecastingSection({ onNavigateTo }: { onNavigateTo?: (section: 
                     className={
                       risk.severity === "high"
                         ? "bg-destructive/20 text-destructive border-destructive/30"
-                        : "bg-chart-3/20 text-chart-3 border-chart-3/30"
+                        : "bg-warning/20 text-warning border-warning/30"
                     }
                   >
                     {risk.impact}

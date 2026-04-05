@@ -43,11 +43,11 @@ const conversionData = [
 ];
 
 const sourceData = [
-  { name: "Direct", value: 35, color: "oklch(0.7 0.18 220)" },
-  { name: "Referral", value: 25, color: "oklch(0.7 0.18 145)" },
-  { name: "Organic", value: 20, color: "oklch(0.75 0.18 55)" },
-  { name: "Paid Ads", value: 15, color: "oklch(0.65 0.2 25)" },
-  { name: "Social", value: 5, color: "oklch(0.7 0.15 300)" },
+  { name: "Direct", value: 35, color: "var(--chart-1)" },
+  { name: "Referral", value: 25, color: "var(--chart-2)" },
+  { name: "Organic", value: 20, color: "var(--chart-3)" },
+  { name: "Paid Ads", value: 15, color: "var(--chart-4)" },
+  { name: "Social", value: 5, color: "var(--chart-5)" },
 ];
 
 const reports = [
@@ -150,35 +150,35 @@ export function ReportsSection({ onNavigateTo }: { onNavigateTo?: (section: Sect
           <div className={`h-[250px] transition-opacity duration-700 ${chartsLoaded ? 'opacity-100' : 'opacity-0'}`}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={conversionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.005 260)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="month"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }}
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                   dy={10}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }}
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                   tickFormatter={(value) => `${value}%`}
                   dx={-10}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "oklch(0.12 0.005 260)",
-                    border: "1px solid oklch(0.22 0.005 260)",
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  labelStyle={{ color: "oklch(0.95 0 0)", fontWeight: 600 }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
                   formatter={(value: number) => [`${value}%`, "Conversion Rate"]}
                 />
                 <Line
                   type="monotone"
                   dataKey="rate"
-                  stroke="oklch(0.7 0.18 145)"
+                  stroke="var(--chart-1)"
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4, strokeWidth: 2 }}

@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { apiJson, getAuthContext } from "@/lib/client-api";
 import {
   Plus,
   Megaphone,
   Mail,
-  MessageSquare,
   Play,
   Pause,
   CheckCircle2,
@@ -28,6 +27,17 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 import type { Section } from "@/lib/types";
 
 interface Lead {
@@ -43,13 +53,17 @@ interface Lead {
 interface Campaign {
   id: string;
   name: string;
+  description?: string;
   status: "active" | "paused" | "completed" | "draft";
-  type: "email" | "linkedin" | "multi-channel";
-  leads: number;
-  opened: number;
-  replied: number;
-  meetings: number;
-  createdAt: string;
+  lead_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface CampaignLeadRow {
+  lead_id: string;
+  lead?: Record<string, unknown> | null;
+  added_at?: string;
 }
 
 interface CampaignSectionProps {
@@ -75,24 +89,46 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
   const [leads, setLeads] = useState<Lead[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
+  const [campaignLeads, setCampaignLeads] = useState<CampaignLeadRow[]>([]);
+  const [loadingCampaignLeads, setLoadingCampaignLeads] = useState(false);
+  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
+  const [newCampaignName, setNewCampaignName] = useState("");
+  const [creatingCampaign, setCreatingCampaign] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const [generatedEmail, setGeneratedEmail] = useState<{ leadId: string; subject: string; body: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"leads" | "campaigns">("leads");
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+
+  const refreshCampaigns = useCallback(async () => {
+    setCampaignsLoading(true);
+    try {
+      const data = await apiJson<Campaign[]>("/api/campaigns");
+      setCampaigns(Array.isArray(data) ? data : []);
+    } catch {
+      setCampaigns([]);
+    } finally {
+      setCampaignsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshCampaigns();
+  }, [refreshCampaigns]);
 
   useEffect(() => {
     const load = async () => {
       setIsLoadingLeads(true);
       try {
         const [leadsData, prospectsData] = await Promise.all([
-          apiJson<any[]>("/leads").catch(() => []),
+          apiJson<any[]>("/api/leads").catch(() => []),
           apiJson<any[]>("/prospects").catch(() => []),
         ]);
 
         const rawLeads = Array.isArray(leadsData) ? leadsData : [];
         const rawProspects = Array.isArray(prospectsData) ? prospectsData : [];
 
-        // Merge lead data with prospect scores
         const scoreMap: Record<string, any> = {};
         rawProspects.forEach((p: any) => {
           if (p.lead_id) scoreMap[String(p.lead_id)] = p;
@@ -102,37 +138,43 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
           id: String(l.id),
           first_name: l.first_name || l.name || "Unknown",
           name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Unknown",
-          company: l.company || "Unknown Co.",
+          company: l.company || "—",
           email: l.email || "",
           score: scoreMap[String(l.id)]?.score ?? null,
           category: scoreMap[String(l.id)]?.category ?? null,
         }));
 
         setLeads(merged);
-
-        // Build pseudo-campaigns from high-intent leads
-        const highLeads = merged.filter(l => l.category === "high" || (l.score !== null && (l.score as number) >= 70));
-        if (highLeads.length > 0) {
-          setCampaigns([
-            {
-              id: "auto-high",
-              name: "High Intent Prospects",
-              status: "active",
-              type: "multi-channel",
-              leads: highLeads.length,
-              opened: Math.round(highLeads.length * 0.62),
-              replied: Math.round(highLeads.length * 0.24),
-              meetings: Math.round(highLeads.length * 0.08),
-              createdAt: new Date().toISOString(),
-            },
-          ]);
-        }
       } finally {
         setIsLoadingLeads(false);
       }
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (!expandedCampaignId) {
+      setCampaignLeads([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingCampaignLeads(true);
+      try {
+        const rows = await apiJson<CampaignLeadRow[]>(
+          `/api/campaigns/${encodeURIComponent(expandedCampaignId)}/leads`
+        );
+        if (!cancelled) setCampaignLeads(Array.isArray(rows) ? rows : []);
+      } catch {
+        if (!cancelled) setCampaignLeads([]);
+      } finally {
+        if (!cancelled) setLoadingCampaignLeads(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedCampaignId]);
 
   const handleGenerateOutreach = async (lead: Lead) => {
     const leadId = String(lead.id);
@@ -210,7 +252,7 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
               Open {selectedLeads.size} in Deal Room
             </Button>
           )}
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNewCampaignOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             New Campaign
           </Button>
@@ -222,8 +264,13 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
         {[
           { label: "Total Leads", value: leads.length, icon: Users, color: "text-primary" },
           { label: "High Intent", value: leads.filter(l => l.category === "high" || (l.score !== null && (l.score as number) >= 70)).length, icon: Target, color: "text-emerald-400" },
-          { label: "Active Campaigns", value: campaigns.filter(c => c.status === "active").length, icon: Megaphone, color: "text-blue-400" },
-          { label: "Meetings Booked", value: campaigns.reduce((s, c) => s + c.meetings, 0), icon: TrendingUp, color: "text-amber-400" },
+          { label: "Campaigns", value: campaigns.length, icon: Megaphone, color: "text-blue-400" },
+          {
+            label: "Leads in campaigns",
+            value: campaigns.reduce((s, c) => s + (c.lead_count || 0), 0),
+            icon: TrendingUp,
+            color: "text-amber-400",
+          },
         ].map(stat => (
           <Card key={stat.label} className="bg-card border-border">
             <CardContent className="p-4">
@@ -256,7 +303,7 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {tab === "leads" ? `Lead Campaign (${leads.length})` : `Campaigns (${campaigns.length})`}
+            {tab === "leads" ? `All leads (${leads.length})` : `Campaigns (${campaignsLoading ? "…" : campaigns.length})`}
           </button>
         ))}
       </div>
@@ -469,87 +516,173 @@ export function CampaignSection({ onOpenDealRoom, onNavigateTo }: CampaignSectio
       {/* Campaigns Tab */}
       {activeTab === "campaigns" && (
         <div className="space-y-4">
-          {campaigns.length === 0 && !isLoadingLeads && (
+          {campaignsLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading campaigns…
+            </div>
+          )}
+          {!campaignsLoading && campaigns.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mb-4">
                 <Megaphone className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">No campaigns yet</h3>
               <p className="text-sm text-muted-foreground max-w-sm mb-6">
-                Add leads with high intent scores and campaigns will be created automatically, or create one manually.
+                Create a campaign from here or add leads to one from Lead Explorer. Nothing is shown until you create real campaigns.
               </p>
-              <Button className="bg-primary text-primary-foreground">
+              <Button className="bg-primary text-primary-foreground" onClick={() => setNewCampaignOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Campaign
               </Button>
             </div>
           )}
-          {campaigns.map((campaign, i) => {
-            const StatusIcon = statusIcons[campaign.status];
-            const openRate = campaign.leads > 0 ? Math.round((campaign.opened / campaign.leads) * 100) : 0;
-            const replyRate = campaign.leads > 0 ? Math.round((campaign.replied / campaign.leads) * 100) : 0;
+          {!campaignsLoading &&
+            campaigns.map((campaign, i) => {
+              const StatusIcon = statusIcons[campaign.status] || Play;
+              const expanded = expandedCampaignId === campaign.id;
 
-            return (
-              <Card
-                key={campaign.id}
-                className="bg-card border-border hover:border-primary/30 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4"
-                style={{ animationDelay: `${i * 100}ms`, animationFillMode: "both" }}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-chart-2/20 flex items-center justify-center">
-                        <Megaphone className="w-5 h-5 text-primary" />
+              return (
+                <Card
+                  key={campaign.id}
+                  className="bg-card border-border hover:border-primary/30 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4"
+                  style={{ animationDelay: `${i * 100}ms`, animationFillMode: "both" }}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-chart-2/20 flex items-center justify-center">
+                          <Megaphone className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">{campaign.name}</h3>
+                          {campaign.description ? (
+                            <p className="text-xs text-muted-foreground mt-0.5">{campaign.description}</p>
+                          ) : null}
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{campaign.name}</h3>
-                        <p className="text-xs text-muted-foreground capitalize">{campaign.type}</p>
+                      <Badge className={cn("border", statusColors[campaign.status] || statusColors.active)}>
+                        <StatusIcon className="w-3 h-3 mr-1" />
+                        {campaign.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg bg-secondary/50">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Users className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-xs text-muted-foreground">Leads attached</span>
+                        </div>
+                        <p className="text-xl font-bold text-foreground">{campaign.lead_count ?? 0}</p>
                       </div>
                     </div>
-                    <Badge className={cn("border", statusColors[campaign.status])}>
-                      <StatusIcon className="w-3 h-3 mr-1" />
-                      {campaign.status}
-                    </Badge>
-                  </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: "Leads", value: campaign.leads, icon: Users, color: "text-primary" },
-                      { label: "Open Rate", value: `${openRate}%`, icon: Mail, color: "text-amber-400" },
-                      { label: "Reply Rate", value: `${replyRate}%`, icon: MessageSquare, color: "text-emerald-400" },
-                      { label: "Meetings", value: campaign.meetings, icon: TrendingUp, color: "text-blue-400" },
-                    ].map(metric => (
-                      <div key={metric.label} className="p-3 rounded-lg bg-secondary/50">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <metric.icon className={cn("w-3.5 h-3.5", metric.color)} />
-                          <span className="text-xs text-muted-foreground">{metric.label}</span>
-                        </div>
-                        <p className="text-xl font-bold text-foreground">{metric.value}</p>
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-border text-sm h-8"
+                        onClick={() => setExpandedCampaignId(expanded ? null : campaign.id)}
+                      >
+                        {expanded ? "Hide leads" : "View leads"}
+                        <ChevronRight className={cn("w-3 h-3 ml-1 transition-transform", expanded && "rotate-90")} />
+                      </Button>
+                      <div className="flex-1" />
+                    </div>
+
+                    {expanded && (
+                      <div className="mt-4 rounded-lg border border-border bg-secondary/20 p-4">
+                        {loadingCampaignLeads ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        ) : campaignLeads.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No leads in this campaign yet.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {campaignLeads.map((row) => {
+                              const L = row.lead as Record<string, string> | null | undefined;
+                              const name =
+                                L?.name ||
+                                `${L?.first_name || ""} ${L?.last_name || ""}`.trim() ||
+                                row.lead_id;
+                              const company = L?.company || "—";
+                              return (
+                                <li
+                                  key={row.lead_id}
+                                  className="flex items-center justify-between gap-2 text-sm border-b border-border/50 pb-2 last:border-0"
+                                >
+                                  <div>
+                                    <p className="font-medium text-foreground">{name}</p>
+                                    <p className="text-xs text-muted-foreground">{company}</p>
+                                  </div>
+                                  {onOpenDealRoom && (
+                                    <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={() => onOpenDealRoom(row.lead_id)}>
+                                      <DoorOpen className="w-3 h-3 mr-1" />
+                                      Deal Room
+                                    </Button>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
-                    <Button size="sm" variant="outline" className="border-border text-sm h-8">
-                      <BarChart3 className="w-3 h-3 mr-1" />
-                      Analytics
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-border text-sm h-8">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      AI Optimize
-                    </Button>
-                    <div className="flex-1" />
-                    <Button size="sm" variant="ghost" className="text-primary hover:bg-primary/10 h-8">
-                      View Details
-                      <ChevronRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
         </div>
       )}
+
+      <Dialog open={newCampaignOpen} onOpenChange={setNewCampaignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New campaign</DialogTitle>
+            <DialogDescription>Creates a real campaign you can attach leads to from Lead Explorer.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="camp-name">Name</Label>
+            <Input
+              id="camp-name"
+              value={newCampaignName}
+              onChange={(e) => setNewCampaignName(e.target.value)}
+              placeholder="Campaign name"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNewCampaignOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={creatingCampaign || !newCampaignName.trim()}
+              onClick={async () => {
+                setCreatingCampaign(true);
+                try {
+                  await apiJson("/api/campaigns", {
+                    method: "POST",
+                    body: JSON.stringify({ name: newCampaignName.trim(), description: "" }),
+                  });
+                  setNewCampaignName("");
+                  setNewCampaignOpen(false);
+                  await refreshCampaigns();
+                  toast({ title: "Campaign created" });
+                } catch (e) {
+                  toast({
+                    variant: "destructive",
+                    title: "Failed",
+                    description: e instanceof Error ? e.message : "Error",
+                  });
+                } finally {
+                  setCreatingCampaign(false);
+                }
+              }}
+            >
+              {creatingCampaign ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

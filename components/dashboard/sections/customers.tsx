@@ -279,10 +279,10 @@ export function CustomersSection({ onNavigateTo }: { onNavigateTo?: (section: Se
                         width: `${customer.healthScore}%`,
                         backgroundColor:
                           customer.healthScore >= 80
-                            ? "oklch(0.7 0.18 145)"
+                            ? "var(--success)"
                             : customer.healthScore >= 60
-                            ? "oklch(0.75 0.18 55)"
-                            : "oklch(0.65 0.2 25)",
+                            ? "var(--warning)"
+                            : "var(--destructive)",
                       }}
                     />
                   </div>
